@@ -244,6 +244,19 @@
             100% { transform: translate(-50%, -50%) scale(1, 1); }
         }
         
+        .thronglet-beep {
+            background-image: url('bandoletebeep.png') !important;
+            animation: beep 0.6s ease;
+        }
+        
+        @keyframes beep {
+            0% { transform: translate(-50%, -50%) scale(1, 1); }
+            25% { transform: translate(-50%, -50%) scale(1.1, 0.9); }
+            50% { transform: translate(-50%, -50%) scale(1.2, 0.8); }
+            75% { transform: translate(-50%, -50%) scale(1.1, 0.9); }
+            100% { transform: translate(-50%, -50%) scale(1, 1); }
+        }
+        
         .thronglet-stats {
             position: absolute;
             background-color: rgba(0, 0, 0, 0.7);
@@ -628,6 +641,24 @@
         <div id="item-buttons">
             <button class="item-button" id="place-apple">Place Apple</button>
             <button class="item-button" id="place-ball">Place Ball</button>
+            <button class="item-button" id="toggle-communication">Communicate</button>
+        </div>
+        
+        <!-- Communication Interface -->
+        <div id="communication-interface" style="margin-top: 10px; display: none;">
+            <div style="display: flex; margin-bottom: 10px;">
+                <input type="text" id="message-input" placeholder="Type your message..." style="flex: 1; padding: 8px; border-radius: 5px; border: none;">
+                <select id="message-target" style="margin-left: 10px; padding: 8px; border-radius: 5px; border: none;">
+                    <option value="all">All Thronglets</option>
+                    <!-- Individual Thronglet options will be added dynamically -->
+                </select>
+                <button id="send-message" style="margin-left: 10px; padding: 8px 15px; background-color: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">Send</button>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <label style="margin-right: 10px; font-size: 14px; color: white;">Use Morse Code:</label>
+                <input type="checkbox" id="use-morse" checked>
+                <div id="morse-preview" style="margin-left: 15px; color: white; font-size: 14px; font-family: monospace;"></div>
+            </div>
         </div>
     </div>
     
@@ -1913,6 +1944,49 @@
             thronglets.push(firstThronglet);
             updateThrongletCounter();
             
+            // IMMEDIATELY TEACH ALL CONCEPTS TO THE FIRST THRONGLET (CREATOR)
+            // This guarantees the creator Thronglet can act as a teacher to others
+            console.log("Teaching all concepts to Creator Thronglet (id: 0)");
+            const creatorConcepts = ["food", "happy", "sad", "follow"];
+            
+            // First ensure the knownConcepts array is initialized
+            if (!firstThronglet.knownConcepts) {
+                firstThronglet.knownConcepts = [];
+                firstThronglet.lastConceptUse = {};
+            }
+            
+            // Then teach all concepts directly
+            for (const concept of creatorConcepts) {
+                // Directly add the concept (don't rely on learnConcept method)
+                if (!firstThronglet.knownConcepts.includes(concept)) {
+                    firstThronglet.knownConcepts.push(concept);
+                    console.log(`Creator Thronglet learned concept: ${concept} (direct)`);
+                    
+                    // Add to neural network immediately
+                    if (typeof integrateConceptToNeuralNetwork === 'function') {
+                        integrateConceptToNeuralNetwork(firstThronglet, concept);
+                    }
+                    
+                    // Display the concept to show it's active
+                    const pattern = throngletLanguage.getPatternForConcept(concept);
+                    setTimeout(() => {
+                        firstThronglet.showThought(pattern);
+                    }, 500 * creatorConcepts.indexOf(concept));
+                }
+            }
+            
+            // Also give it all Morse patterns
+            if (!firstThronglet.morsePatterns) {
+                firstThronglet.morsePatterns = [];
+                // Add Morse patterns for all concepts
+                for (const concept of creatorConcepts) {
+                    const pattern = throngletLanguage.getPatternForConcept(concept);
+                    if (pattern && !firstThronglet.morsePatterns.includes(pattern)) {
+                        firstThronglet.morsePatterns.push(pattern);
+                    }
+                }
+            }
+            
             // Start the game loop
             gameLoop();
             
@@ -2409,7 +2483,7 @@
                         
                         alert(memoryText);
                     }
-                } else {
+            } else {
                     alert("No Thronglets available");
                 }
             });
@@ -2444,7 +2518,7 @@
                         // Add a birth memory if none exists
                         if (thronglet.parentId === null) {
                             addThrongletMemory(thronglet.id, 'birth', 'I hatched from an egg brought by the Creator.');
-                        } else {
+            } else {
                             addThrongletMemory(thronglet.id, 'birth', `I was created when Thronglet #${thronglet.parentId} multiplied.`);
                         }
                         
@@ -2515,6 +2589,239 @@
                 
                 brainVisualizerButton.addEventListener('click', openBrainVisualizer);
                 container.appendChild(brainVisualizerButton);
+            }
+            
+            // Initialize communication interface
+            initCommunicationInterface();
+        }
+
+        // Communication interface functionality
+        function initCommunicationInterface() {
+            const toggleCommunicationBtn = document.getElementById('toggle-communication');
+            const communicationInterface = document.getElementById('communication-interface');
+            const messageInput = document.getElementById('message-input');
+            const messageTarget = document.getElementById('message-target');
+            const sendMessageBtn = document.getElementById('send-message');
+            const useMorseCheckbox = document.getElementById('use-morse');
+            const morsePreview = document.getElementById('morse-preview');
+            
+            if (!toggleCommunicationBtn || !communicationInterface) {
+                console.warn("Communication interface elements not found");
+                return;
+            }
+            
+            // Toggle communication interface visibility
+            toggleCommunicationBtn.addEventListener('click', () => {
+                const isVisible = communicationInterface.style.display === 'block';
+                communicationInterface.style.display = isVisible ? 'none' : 'block';
+                
+                if (!isVisible) {
+                    // Update Thronglet selector when showing the interface
+                    updateThrongletSelector();
+                    messageInput.focus();
+                }
+            });
+            
+            // Update Thronglet selector dropdown with current Thronglets
+            function updateThrongletSelector() {
+                // Clear existing options except "All Thronglets"
+                while (messageTarget.options.length > 1) {
+                    messageTarget.remove(1);
+                }
+                
+                // Add option for each Thronglet
+                thronglets.forEach(thronglet => {
+                    const option = document.createElement('option');
+                    option.value = thronglet.id;
+                    option.textContent = `Thronglet #${thronglet.id}`;
+                    messageTarget.appendChild(option);
+                });
+            }
+            
+            // Send message to Thronglets
+            sendMessageBtn.addEventListener('click', sendMessage);
+            
+            // Allow pressing Enter to send message
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Update Morse preview as user types
+            messageInput.addEventListener('input', updateMorsePreview);
+            
+            // Update Morse preview when checkbox changes
+            useMorseCheckbox.addEventListener('change', updateMorsePreview);
+            
+            // Function to send message to Thronglets
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                
+                // Make sure we have a message to send
+                if (!message) {
+                    alert('Please enter a message to send.');
+                    return;
+                }
+                
+                // Get target Thronglet ID
+                const targetId = messageTarget.value;
+                
+                // Convert to morse if option is checked
+                const useMorse = useMorseCheckbox.checked;
+                const morseMessage = useMorse ? textToMorse(message) : message;
+                
+                // Track user message in global context
+                trackEvent('user_message', {
+                    message: message,
+                    target: targetId,
+                    usedMorse: useMorse
+                });
+                
+                // Find target Thronglets
+                let targetThronglets = [];
+                if (targetId === 'all') {
+                    targetThronglets = thronglets;
+                } else {
+                    const thronglet = thronglets.find(t => t.id.toString() === targetId);
+                    if (thronglet) {
+                        targetThronglets = [thronglet];
+                    }
+                }
+                
+                // Send message to each target Thronglet
+                if (targetThronglets.length > 0) {
+                    targetThronglets.forEach(thronglet => {
+                        // Add user message to Thronglet's memory
+                        addThrongletMemory(thronglet.id, 'received_message', `The Creator sent me: "${message}"`);
+                        
+                        // Display message in thought bubble
+                        const displayMessage = useMorse ? morseMessage : `Message from Creator: ${message}`;
+                        thronglet.showThought(displayMessage);
+                        
+                        // Play Morse code if enabled
+                        if (useMorse && audioContext) {
+                            const frequency = 300 + (thronglet.id * 10); // Unique frequency per Thronglet
+                            playMorseSequence(thronglet, [morseMessage], frequency);
+                        }
+                        
+                        // Have the Thronglet respond
+                        setTimeout(() => {
+                            respondToMessage(thronglet, message);
+                        }, 2000 + Math.random() * 1000); // Random delay for natural feel
+                    });
+                    
+                    // Clear the input field
+                    messageInput.value = '';
+                    morsePreview.textContent = '';
+                } else {
+                    alert('No Thronglets available to receive your message.');
+                }
+            }
+            
+            // Update Morse preview
+            function updateMorsePreview() {
+                if (useMorseCheckbox.checked) {
+                    const text = messageInput.value.trim();
+                    if (text) {
+                        morsePreview.textContent = textToMorse(text);
+                    } else {
+                        morsePreview.textContent = '';
+                    }
+                } else {
+                    morsePreview.textContent = '';
+                }
+            }
+            
+            // Thronglet response to user message
+            function respondToMessage(thronglet, message) {
+                // Base response on message content and Thronglet's state
+                let response = '';
+                
+                // Check if the message is in morse code
+                const morsePatterns = extractMorsePatterns(message);
+                if (morsePatterns.length > 0) {
+                    // Thronglet tries to decode the morse
+                    const translation = morseToText(morsePatterns[0]);
+                    
+                    if (translation) {
+                        // Thronglet understood the morse code
+                        response = `${morsePatterns[0]} means "${translation}"! I understand!`;
+                        
+                        // Add this morse pattern to Thronglet's knowledge
+                        if (!thronglet.morsePatterns) {
+                            thronglet.morsePatterns = [];
+                        }
+                        if (!thronglet.morsePatterns.includes(morsePatterns[0])) {
+                            thronglet.morsePatterns.push(morsePatterns[0]);
+                            
+                            // Show learning animation
+                            showLearningSparkle(thronglet.x, thronglet.y, "Learned Morse!");
+                        }
+                    } else {
+                        // Thronglet doesn't understand completely
+                        response = `I hear your beeps! I'm learning this code.`;
+                        
+                        // Still learn the pattern without translation
+                        if (!thronglet.morsePatterns) {
+                            thronglet.morsePatterns = [];
+                        }
+                        if (!thronglet.morsePatterns.includes(morsePatterns[0])) {
+                            thronglet.morsePatterns.push(morsePatterns[0]);
+                        }
+                    }
+                    
+                    // Respond with a morse pattern too sometimes
+                    if (thronglet.morsePatterns && thronglet.morsePatterns.length > 0 && Math.random() < 0.5) {
+                        const randomPattern = thronglet.morsePatterns[Math.floor(Math.random() * thronglet.morsePatterns.length)];
+                        response += ` ${randomPattern}`;
+                    }
+                } else {
+                    // Message was in plain text - respond based on content
+                    const messageLower = message.toLowerCase();
+                    
+                    // Basic responses based on common questions/commands
+                    if (messageLower.includes('hello') || messageLower.includes('hi')) {
+                        response = `Hello Creator! I'm Thronglet #${thronglet.id}!`;
+                    } else if (messageLower.includes('hungry') || messageLower.includes('food') || messageLower.includes('eat')) {
+                        response = thronglet.hunger > 70 
+                            ? `I'm feeling full (${thronglet.hunger}%)!` 
+                            : `Yes, I'm getting hungry (${thronglet.hunger}%)... Could I have some food?`;
+                    } else if (messageLower.includes('happy') || messageLower.includes('sad') || messageLower.includes('how are you')) {
+                        response = thronglet.happiness > 70 
+                            ? `I'm very happy (${thronglet.happiness}%)!` 
+                            : `I'm feeling a bit down (${thronglet.happiness}%)... Playing helps!`;
+                    } else if (messageLower.includes('play') || messageLower.includes('ball') || messageLower.includes('game')) {
+                        response = `I love playing with the ball! It makes me so happy!`;
+                    } else if (messageLower.includes('multiply') || messageLower.includes('friend') || messageLower.includes('more')) {
+                        response = thronglets.length < 5 
+                            ? `Yes, I'd love to multiply and make more friends!` 
+                            : `We're already ${thronglets.length} Thronglets! It's getting crowded!`;
+                    } else {
+                        // Generic responses for other messages
+                        const genericResponses = [
+                            `I understand, Creator!`,
+                            `Thank you for talking to me!`,
+                            `I'm learning every day!`,
+                            `It's nice to communicate with you!`,
+                            `I'll remember what you said!`
+                        ];
+                        response = genericResponses[Math.floor(Math.random() * genericResponses.length)];
+                    }
+                    
+                    // Sometimes add a morse code pattern to teach the user
+                    if (thronglet.morsePatterns && thronglet.morsePatterns.length > 0 && Math.random() < 0.3) {
+                        const randomPattern = thronglet.morsePatterns[Math.floor(Math.random() * thronglet.morsePatterns.length)];
+                        const translation = morseToText(randomPattern);
+                        response += ` Here's some morse: ${randomPattern}${translation ? ` (means "${translation}")` : ''}`;
+                    }
+                }
+                
+                // Add memory of response
+                addThrongletMemory(thronglet.id, 'sent_response', `I responded: "${response}"`);
+                
+                // Show response
+                thronglet.showThought(response);
             }
         }
 
@@ -3880,14 +4187,41 @@
                     
                     // Show appropriate thought bubble
                     let thoughtText = "Beep!";
+                    let morseCode = "";
+                    
                     switch (bestPattern.meaning) {
-                        case "hungry": thoughtText = "I'm hungry!"; break;
-                        case "play": thoughtText = "Let's play!"; break;
-                        case "help": thoughtText = "Help me!"; break;
-                        case "follow": thoughtText = "Follow me!"; break;
-                        case "danger": thoughtText = "Watch out!"; break;
+                        case "hungry": 
+                            thoughtText = "I'm hungry!"; 
+                            morseCode = "... --- ..."; // SOS
+                            break;
+                        case "play": 
+                            thoughtText = "Let's play!"; 
+                            morseCode = ".--. .-.. .- -.--"; // PLAY
+                            break;
+                        case "help": 
+                            thoughtText = "Help me!"; 
+                            morseCode = ".... . .-.. .--."; // HELP
+                            break;
+                        case "follow": 
+                            thoughtText = "Follow me!"; 
+                            morseCode = "..-. --- .-.. .-.. --- .--"; // FOLLOW
+                            break;
+                        case "danger": 
+                            thoughtText = "Watch out!"; 
+                            morseCode = "-.. .- -. --. . .-."; // DANGER
+                            break;
                     }
                     
+                    // Add the Morse code to the thought bubble text
+                    thoughtText += " " + morseCode;
+                    
+                    // Play beep animation
+                    this.thronglet.element.classList.add('thronglet-beep');
+                    setTimeout(() => {
+                        this.thronglet.element.classList.remove('thronglet-beep');
+                    }, 600);
+                    
+                    // Show the thought with Morse code
                     this.thronglet.showThought(thoughtText);
                     
                     // The actual beep sound is handled by showThought method
@@ -4475,7 +4809,7 @@
             
             // Clear neuron info
             document.getElementById('neuron-info').textContent = 'Select a neuron to see its details';
-        }
+            }
         
         function initBrainVisualization(throngletId) {
             // Find the Thronglet
@@ -5247,7 +5581,7 @@
                     ctx.font = '11px Arial';
                     ctx.textAlign = 'right';
                     
-                    // Determine the neuron name
+                    // Find the neuron name
                     const neuronName = Object.keys(activeBrainVisualization.neurons).find(
                         name => activeBrainVisualization.neurons[name] === neuron
                     );
@@ -5433,6 +5767,14 @@
             
             // Check if text contains any morse code patterns
             const morsePatterns = extractMorsePatterns(text);
+            
+            // Add animation if not already animating
+            if (!thronglet.element.classList.contains('thronglet-beep')) {
+                thronglet.element.classList.add('thronglet-beep');
+                setTimeout(() => {
+                    thronglet.element.classList.remove('thronglet-beep');
+                }, 600);
+            }
             
             if (morsePatterns.length > 0) {
                 // Play morse code sequence if patterns are found
@@ -5719,7 +6061,7 @@
                     learnFromConversation(t2, t1, message);
                     
                     // Wait a bit before the reply
-                    setTimeout(() => {
+                setTimeout(() => {
                         // Reply from thronglet2
                         generateConversationMessage(t2, t1, message).then(reply => {
                             showThought(t2, reply);
@@ -5853,16 +6195,16 @@
                 switch(concept) {
                     case 'food':
                         sparkle.style.color = '#e74c3c'; // Red
-                        break;
+                            break;
                     case 'happy':
                         sparkle.style.color = '#f1c40f'; // Yellow
-                        break;
+                            break;
                     case 'sad':
                         sparkle.style.color = '#3498db'; // Blue
-                        break;
+                            break;
                     case 'follow':
                         sparkle.style.color = '#2ecc71'; // Green
-                        break;
+                            break;
                     default:
                         sparkle.style.color = '#9b59b6'; // Purple
                 }
@@ -5899,8 +6241,8 @@
                     // Learn "food" concept when eating apple
                     if (nearApple) {
                         console.log(`Thronglet #${thronglet.id} is near an apple!`);
-                        // Higher chance to learn when hungry
-                        const learnChance = 0.75;
+                        // Higher chance to learn when hungry - INCREASED from 0.75 to 0.95
+                        const learnChance = 0.95;
                         if (Math.random() < learnChance) {
                             console.log(`Attempting to teach food concept to Thronglet #${thronglet.id}`);
                             if (throngletLanguage.learnConcept(thronglet, "food")) {
@@ -5919,7 +6261,7 @@
                         }
                     }
                     
-                    // Increase chance for follow concept and fix the checkForApple
+                    // Learn follow concept - already at 95% chance, good
                     if (isFollowing) {
                         console.log(`Thronglet #${thronglet.id} is following another Thronglet`);
                         // Very high chance to learn (95%)
@@ -5941,7 +6283,7 @@
                         }
                     }
                     
-                    // Happy concept - increased chance to 90% and lowered threshold to 60
+                    // Happy concept - already at 90% chance, good
                     if (isHappy) {
                         console.log(`Thronglet #${thronglet.id} is happy (${thronglet.happiness})`);
                         if (Math.random() < 0.9) {
@@ -5961,10 +6303,10 @@
                             }
                         }
                     } 
-                    // Sad concept - keeps working fine
+                    // Sad concept - INCREASE from 0.1 to 0.9 to match other concepts
                     else if (isSad) {
                         console.log(`Thronglet #${thronglet.id} is sad (${thronglet.happiness})`);
-                        if (Math.random() < 0.1) {
+                        if (Math.random() < 0.9) {
                             console.log(`Attempting to teach sad concept to Thronglet #${thronglet.id} (happiness: ${thronglet.happiness})`);
                             if (throngletLanguage.learnConcept(thronglet, "sad")) {
                                 console.log(`SUCCESS: Thronglet #${thronglet.id} learned sad concept!`);
@@ -5994,7 +6336,7 @@
                     
                     // Reset any existing concepts to ensure clean learning
                     thronglet.knownConcepts = [];
-                    thronglet.lastConceptUse = {};
+                    thronglet.lastConceptUse = {}; // Track when concepts were last used
                     
                     // Make sure creator Thronglet gets all concepts
                     if (thronglet.id === 0) {
@@ -6012,6 +6354,21 @@
                                 showThought(thronglet, pattern);
                             }, 1000 * concepts.indexOf(concept));
                         }
+                    } else {
+                        // Give each non-creator Thronglet one random concept to start with
+                        const concepts = ["food", "happy", "sad", "follow"];
+                        const randomConcept = concepts[Math.floor(Math.random() * concepts.length)];
+                        throngletLanguage.learnConcept(thronglet, randomConcept);
+                        console.log(`Thronglet #${thronglet.id} learned initial ${randomConcept} concept`);
+                        
+                        // Add to neural network
+                        integrateConceptToNeuralNetwork(thronglet, randomConcept);
+                        
+                        // Show the concept with a slight delay
+                        setTimeout(() => {
+                            const pattern = throngletLanguage.getPatternForConcept(randomConcept);
+                            showThought(thronglet, pattern);
+                        }, 500);
                     }
                 }
             }, 2000); // Wait 2 seconds after setup
@@ -6073,7 +6430,7 @@
                 
                 // Initialize concept knowledge using the class-based methods
                 if (!creatorThronglet.knownConcepts) {
-                    creatorThronglet.knownConcepts = ['food', 'happy', 'follow', 'yes', 'no'];
+                    creatorThronglet.knownConcepts = ['food', 'happy', 'sad', 'follow', 'yes', 'no'];
                     
                     // Add patterns to morsePatterns for each known concept
                     if (!creatorThronglet.morsePatterns) {
@@ -6306,9 +6663,9 @@
                 case 'follow':
                     // Follow concept increases likelihood to follow others, but initially weak
                     conceptWeights['followClosest'] = 0.05;
-                    break;
-            }
-            
+                            break;
+                    }
+                    
             // Store concept weights in the agent
             thronglet.agent.weightsByConcept[concept] = conceptWeights;
             
@@ -6333,8 +6690,8 @@
                     for (const [concept, value] of Object.entries(this.conceptKnowledge)) {
                         const weights = this.weightsByConcept[concept];
                         if (weights) {
-                            // Only apply concepts with meaningful activation
-                            if (value > 0.2) {
+                            // Only apply concepts with meaningful activation - REDUCED threshold from 0.2 to 0.1
+                            if (value > 0.1) {
                                 // Apply concept influence
                                 for (const [action, weight] of Object.entries(weights)) {
                                     conceptInfluence[action] = (conceptInfluence[action] || 0) + weight * value;
@@ -6349,7 +6706,8 @@
                         const totalInfluence = Object.values(conceptInfluence).reduce((a, b) => a + b, 0);
                         
                         // Chance to follow concept influence increases as weights grow stronger
-                        if (Math.random() < Math.min(0.7, totalInfluence) && totalInfluence > 0) {
+                        // INCREASED chances of following concept from 0.7 to 0.9
+                        if (Math.random() < Math.min(0.9, totalInfluence) && totalInfluence > 0) {
                             // Choose weighted random action based on concept influence
                             const r = Math.random() * totalInfluence;
                             let acc = 0;
@@ -6367,6 +6725,56 @@
                     return originalAction;
                 };
             }
+        }
+
+        // Define a clear function to integrate concept to neural network
+        function integrateConceptToNeuralNetwork(thronglet, concept) {
+            if (!thronglet || !thronglet.agent) return;
+            
+            console.log(`Integrating concept '${concept}' into Thronglet #${thronglet.id}'s neural network`);
+            
+            // First ensure the concept is pre-integrated (setup)
+            preIntegrateConceptToNeuralNetwork(thronglet, concept);
+            
+            // Then immediately activate it to full strength
+            if (thronglet.agent.conceptKnowledge) {
+                // Set to full activation
+                thronglet.agent.conceptKnowledge[concept] = 1.0;
+                console.log(`Concept '${concept}' activated to full strength in Thronglet #${thronglet.id}'s neural network`);
+            }
+            
+            // Set strong weights for this concept
+            if (thronglet.agent.weightsByConcept && thronglet.agent.weightsByConcept[concept]) {
+                const conceptWeights = {};
+                
+                switch(concept) {
+                    case 'food':
+                        // Food concept should strongly increase tendency to move to apples
+                        conceptWeights['moveToApple'] = 0.8; // Increased from 0.6
+                        break;
+                    case 'happy':
+                        // Happy concept should increase tendency to play and communicate
+                        conceptWeights['moveToPlay'] = 0.7; // Increased from 0.5
+                        conceptWeights['beep'] = 0.6; // Increased from 0.4
+                        break;
+                    case 'sad':
+                        // Sad concept makes them more likely to seek help and communicate
+                        conceptWeights['moveToCreator'] = 0.7; // Increased from 0.5
+                        conceptWeights['beep'] = 0.6; // Increased from 0.4
+                        break;
+                    case 'follow':
+                        // Follow concept increases likelihood to follow others
+                        conceptWeights['followClosest'] = 0.9; // Increased from 0.7
+                        break;
+                }
+                
+                // Update the weights
+                thronglet.agent.weightsByConcept[concept] = conceptWeights;
+                console.log(`Updated weights for concept '${concept}' in Thronglet #${thronglet.id}'s neural network`);
+            }
+            
+            // Create visual effect to show learning
+            createLearningSparkle(thronglet, concept);
         }
         
         // Activate a concept for a Thronglet - move from dormant to active
@@ -6724,4 +7132,4 @@
         }
     </script>
 </body>
-</html> 
+</html>
