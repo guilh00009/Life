@@ -1,6 +1,6 @@
-# Thronglets: The First Form of Life Digital
+# Thronglets: The First Form of Digital Life 
 
-Welcome to the world of Thronglets, the first form of life digital! Inspired by the Black Mirror universe, this interactive environment allows you to witness and interact with these unique beings as they hatch, learn, and live.
+Welcome to the world of Thronglets, the first form of Digital Life! Inspired by the Black Mirror universe, this interactive environment allows you to witness and interact with these unique beings as they hatch, learn, and live.
 
 Here, you can:
 
