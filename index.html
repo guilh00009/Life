@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thronglets - Egg Hatching</title>
+    <title>Thronglets: Artificial Life Simulation</title>
+    <audio id="background-music" loop>
+        <source src="Pixel Hearts.mp3" type="audio/mp3">
+    </audio>
+    <script src="js/thronglet-language.js"></script>
+    <script src="js/thronglet-reset.js"></script>
+    <script src="js/thronglet-rock.js"></script>
     <style>
         body {
             background: linear-gradient(to bottom, #ff9966, #ff5e62);
@@ -291,7 +297,6 @@
         }
 
         #mobile-warning {
-            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -614,6 +619,140 @@
             0% { opacity: 0.6; }
             100% { opacity: 0; }
         }
+
+        .rock {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            z-index: 5;
+            background-color: #7f8c8d;
+            border-radius: 35% 45% 30% 40%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.7), inset 2px 2px 5px rgba(255,255,255,0.3), inset -2px -2px 5px rgba(0,0,0,0.3);
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(255,255,255,0.1) 5%, transparent 30%),
+                radial-gradient(circle at 70% 60%, rgba(0,0,0,0.2) 10%, transparent 30%),
+                linear-gradient(to bottom right, #95a5a6, #7f8c8d 40%, #34495e 80%);
+            transform: rotate(5deg);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            will-change: top, transform, box-shadow;
+        }
+        
+        /* Rock falling shadow animation */
+        @keyframes grow-shadow {
+            0% { box-shadow: 0 5px 5px rgba(0,0,0,0.3), inset 2px 2px 5px rgba(255,255,255,0.3), inset -2px -2px 5px rgba(0,0,0,0.3); }
+            100% { box-shadow: 0 25px 15px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.3), inset -2px -2px 5px rgba(0,0,0,0.3); }
+        }
+        
+        .rock.falling {
+            animation: grow-shadow 0.5s ease-in forwards;
+        }
+        
+        .rock::before {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 10%;
+            width: 20%;
+            height: 10%;
+            background-color: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: rotate(-10deg);
+        }
+        
+        .rock::after {
+            content: '';
+            position: absolute;
+            bottom: 20%;
+            right: 15%;
+            width: 25%;
+            height: 8%;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 50%;
+            transform: rotate(15deg);
+        }
+
+        .impact-effect {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.7);
+            transform: scale(0);
+            animation: impact 0.5s ease-out forwards;
+            z-index: 3;
+        }
+
+        .death-effect {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            background-color: rgba(231, 76, 60, 0.7);
+            border-radius: 50%;
+            animation: death-pulse 1.5s ease-out forwards;
+            z-index: 4;
+        }
+
+        @keyframes impact {
+            0% { transform: scale(0); opacity: 0.7; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        @keyframes death-pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        /* Blood Splatter Effect */
+        .blood-particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background-color: #c0392b; /* Dark red */
+            border-radius: 50%;
+            z-index: 6; /* Above rocks and thronglets */
+            pointer-events: none;
+            opacity: 0.8;
+            /* Use custom properties for animation */
+            animation: splatter var(--duration, 0.8s) ease-out forwards;
+        }
+
+        @keyframes splatter {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                /* Read custom properties set by JS */
+                transform: translate(var(--tx, 0), var(--ty, 0)) scale(0.5);
+                opacity: 0;
+            }
+        }
+
+        /* Screen Shake Effect */
+        #game-container.shake {
+             /* Use custom property for intensity */
+            animation: screen-shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes screen-shake {
+            10%, 90% {
+                transform: translate3d(calc(-1 * var(--shake-intensity, 5px)), 0, 0);
+            }
+            20%, 80% {
+                transform: translate3d(var(--shake-intensity, 5px), 0, 0);
+            }
+            30%, 50%, 70% {
+                transform: translate3d(calc(-1 * var(--shake-intensity, 5px)), 0, 0);
+            }
+            40%, 60% {
+                transform: translate3d(var(--shake-intensity, 5px), 0, 0);
+            }
+             0%, 100% {
+                 transform: translate3d(0, 0, 0);
+             }
+        }
     </style>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐣</text></svg>" />
 </head>
@@ -641,7 +780,6 @@
         <div id="item-buttons">
             <button class="item-button" id="place-apple">Place Apple</button>
             <button class="item-button" id="place-ball">Place Ball</button>
-            <button class="item-button" id="toggle-communication">Communicate</button>
         </div>
         
         <!-- Communication Interface -->
@@ -685,31 +823,41 @@
     </div>
 
     <script>
-        const gameScene = document.getElementById('game-scene');
-        const egg = document.getElementById('egg');
-        const thronglet = document.getElementById('thronglet');
-        const message = document.getElementById('message');
-        const statusDiv = document.getElementById('status');
-        const hungerLevel = document.getElementById('hunger-level');
-        const happinessLevel = document.getElementById('happiness-level');
-        const commandCenter = document.getElementById('command-center');
-        const itemButtons = document.getElementById('item-buttons');
-        const placeApple = document.getElementById('place-apple');
-        const placeBall = document.getElementById('place-ball');
-        const thoughtBubble = document.getElementById('thought-bubble');
+        // Global variables
+        let thronglets = [];
+        let eggs = [];
+        let apples = [];
+        let balls = [];
+        let trees = [];
+        let appleTrees = [];  // Store apple trees
+        
+        // For apple trees
+        const maxAppleTrees = 5;  // Maximum number of apple trees allowed
+        const appleDropProbability = 0.1;  // Chance each tree drops an apple per update
+        
+        let gameScene = document.getElementById('game-scene');
+        let egg = document.getElementById('egg');
+        let thronglet = document.getElementById('thronglet');
+        let message = document.getElementById('message');
+        let statusDiv = document.getElementById('status');
+        let hungerLevel = document.getElementById('hunger-level');
+        let happinessLevel = document.getElementById('happiness-level');
+        let commandCenter = document.getElementById('command-center');
+        let itemButtons = document.getElementById('item-buttons');
+        let placeApple = document.getElementById('place-apple');
+        let placeBall = document.getElementById('place-ball');
+        let thoughtBubble = document.getElementById('thought-bubble');
+        let throngletCounter = document.getElementById('thronglet-counter');
         
         const sceneWidth = 800;
         const sceneHeight = 600;
         let clicks = 0;
         let isPlacingApple = false;
         let isPlacingBall = false;
-        let apples = [];
-        let balls = [];
         let thoughtTimer = null;
         let walkAnimationFrame = 0;
         let walkAnimationTimer = null;
         let gameActive = false;
-        let thronglets = [];
         let nextThrongletId = 0;
         let wellBeingTimer = null;
         
@@ -755,7 +903,7 @@
         let observationPhase = true; // Start in observation mode
         let observationTime = 60000; // Observe for 60 seconds before starting to learn
         let observationStartTime = null;
-        let learningRate = 0.01; // How quickly agents adjust their weights
+        let agentLearningRate = 0.01; // How quickly agents adjust their weights
         let discountFactor = 0.95; // How much future rewards matter
         let explorationRate = 0.3; // How often to try random actions (will decrease over time)
         
@@ -793,39 +941,74 @@
         
         // Function to add events to global context
         function trackEvent(eventType, details) {
-            const event = {
-                timestamp: Date.now(),
-                type: eventType,
-                details: details
-            };
+            if (!globalContext) return;
             
             // Add to session events
-            globalContext.sessionEvents.push(event);
+            globalContext.sessionEvents.push({
+                type: eventType,
+                details: details,
+                timestamp: Date.now()
+            });
             
-            // Also track in specific history lists
+            // Keep events list manageable
+            if (globalContext.sessionEvents.length > 200) {
+                globalContext.sessionEvents.shift();
+            }
+            
+            // Add special tracking for certain events
             if (eventType === 'apple_placed' || eventType === 'apple_eaten') {
-                globalContext.appleHistory.push(event);
-            } else if (eventType === 'ball_placed' || eventType === 'ball_kicked') {
-                globalContext.ballHistory.push(event);
-            } else if (eventType === 'creator_message' || eventType === 'creator_meeting') {
-                globalContext.creatorInteractions.push(event);
+                // Track apple history
+                globalContext.appleHistory.push({
+                    type: eventType,
+                    details: details,
+                    timestamp: Date.now()
+                });
+                
+                // Keep apple history manageable
+                if (globalContext.appleHistory.length > 50) {
+                    globalContext.appleHistory.shift();
+                }
+                
+                // Record apple_eaten event in language system
+                if (eventType === 'apple_eaten' && window.ThrongletLanguage && window.ThrongletLanguage.isEnabled() && details.throngletId) {
+                    window.ThrongletLanguage.recordEvent("apple_eaten", details.throngletId);
+                }
             }
             
-            // Keep lists trimmed for performance
-            if (globalContext.sessionEvents.length > 100) {
-                globalContext.sessionEvents = globalContext.sessionEvents.slice(-100);
-            }
-            if (globalContext.appleHistory.length > 50) {
-                globalContext.appleHistory = globalContext.appleHistory.slice(-50);
-            }
+            if (eventType === 'ball_placed' || eventType === 'ball_kicked') {
+                // Track ball history
+                globalContext.ballHistory.push({
+                    type: eventType,
+                    details: details,
+                    timestamp: Date.now()
+                });
+                
+                // Keep ball history manageable
             if (globalContext.ballHistory.length > 50) {
-                globalContext.ballHistory = globalContext.ballHistory.slice(-50);
-            }
-            if (globalContext.creatorInteractions.length > 50) {
-                globalContext.creatorInteractions = globalContext.creatorInteractions.slice(-50);
+                    globalContext.ballHistory.shift();
+                }
+                
+                // Record ball_kicked event in language system
+                if (eventType === 'ball_kicked' && window.ThrongletLanguage && window.ThrongletLanguage.isEnabled() && details.throngletId) {
+                    window.ThrongletLanguage.recordEvent("ball_played", details.throngletId);
+                }
             }
             
-            // Save context to localStorage for persistence
+            if (eventType === 'creator_message') {
+                // Track creator interactions
+                globalContext.creatorInteractions.push({
+                    type: 'message',
+                    details: details,
+                    timestamp: Date.now()
+                });
+                
+                // Keep interactions manageable
+            if (globalContext.creatorInteractions.length > 50) {
+                    globalContext.creatorInteractions.shift();
+                }
+            }
+            
+            // Save updated context
             saveContextToStorage();
         }
         
@@ -1124,6 +1307,11 @@
                                     // Add to Thronglet's personal memory
                                     addThrongletMemory(this.id, 'apple_eaten', `I learned how to eat an apple! My hunger increased to ${this.hunger}%.`);
                                     
+                                    // Add to language learning - associate "eat" with "good"
+                                    if (window.ThrongletLanguage && window.ThrongletLanguage.isEnabled()) {
+                                        window.ThrongletLanguage.recordEvent("apple_eaten", this.id);
+                                    }
+                                    
                                     // Show another learning sparkle
                                     showLearningSparkle(this.x, this.y, "Eating +1");
                                     
@@ -1150,6 +1338,16 @@
                             
                             // Add to Thronglet's personal memory
                             addThrongletMemory(this.id, 'apple_eaten', `I ate an apple and my hunger increased to ${this.hunger}%.`);
+                            
+                            // Add to language learning - eating when very hungry is especially good
+                            if (window.ThrongletLanguage && window.ThrongletLanguage.isEnabled()) {
+                                window.ThrongletLanguage.recordEvent("apple_eaten", this.id);
+                                
+                                // If they were very hungry, emphasize that eating helped
+                                if (this.hunger < 30) {
+                                    window.ThrongletLanguage.recordEvent("very_hungry", this.id);
+                                }
+                            }
                             
                             // Remove the apple - with safety check
                             if (apple.element && apple.element.parentNode) {
@@ -1255,6 +1453,16 @@
                                     
                                     addThrongletMemory(this.id, 'ball_kicked', memoryText);
                                     
+                                    // Add to language learning - associate "play" with "good"
+                                    if (window.ThrongletLanguage && window.ThrongletLanguage.isEnabled()) {
+                                        window.ThrongletLanguage.recordEvent("ball_played", this.id);
+                                        
+                                        // If they were very unhappy and now much happier, emphasize that playing helped
+                                        if (this.happiness > 70) {
+                                            window.ThrongletLanguage.recordEvent("very_happy", this.id);
+                                        }
+                                    }
+                                    
                                     // Show appropriate learning sparkle
                                     showLearningSparkle(this.x, this.y, isTeamworkKick ? "Teamwork +2x" : "Kicking +1");
                                     
@@ -1307,6 +1515,16 @@
                             
                             addThrongletMemory(this.id, 'ball_kicked', memoryText);
                             
+                            // Add to language learning - playing is good, especially when unhappy
+                            if (window.ThrongletLanguage && window.ThrongletLanguage.isEnabled()) {
+                                window.ThrongletLanguage.recordEvent("ball_played", this.id);
+                                
+                                // If they were very unhappy and now much happier, emphasize that playing helped
+                                if (this.happiness > 70) {
+                                    window.ThrongletLanguage.recordEvent("very_happy", this.id);
+                                }
+                            }
+                            
                             // Calculate kick direction (away from thronglet)
                             const kickAngle = Math.atan2(ball.y - this.y, ball.x - this.x);
                             const kickPower = 5 + Math.random() * 3; // Stronger kick after learning (5-8)
@@ -1337,6 +1555,11 @@
                 if (this.hunger === 0) {
                     this.showThought("I'm starving! Please feed me!");
                     this.setClassName('sad');
+                    
+                    // Add to language learning - being very hungry is bad
+                    if (window.ThrongletLanguage && window.ThrongletLanguage.isEnabled()) {
+                        window.ThrongletLanguage.recordEvent("very_hungry", this.id);
+                    }
                 }
             }
             
@@ -1345,13 +1568,18 @@
                 if (this.happiness < 30 && balls.length === 0) {
                     this.showThought("I'm so bored! I wish I had a ball to play with.");
                     this.setClassName('sad');
+                    
+                    // Add to language learning - being very unhappy is bad
+                    if (window.ThrongletLanguage && window.ThrongletLanguage.isEnabled() && this.happiness < 20) {
+                        window.ThrongletLanguage.learnFromSentence("unhappy bad need play", "experience", this.id);
+                    }
                 }
             }
             
             updateWellBeing() {
                 const currentTime = Date.now();
                 // Check if 30 seconds have passed since birth or last multiplication
-                if (currentTime - this.lastMultiplyTime >= 30000 && this.canMultiply && thronglets.length < 5) {
+                if (currentTime - this.lastMultiplyTime >= 30000 && this.canMultiply && thronglets.length < 100) {
                     this.multiply();
                     this.lastMultiplyTime = currentTime; // Update last multiplication time
                 }
@@ -1371,16 +1599,67 @@
                 const newThronglet = new Thronglet(newX, newY, this.id);
                 thronglets.push(newThronglet);
                 
+                // Transfer neural network learning from parent to child with variation
+                if (agentLearningEnabled && this.agent && newThronglet.agent) {
+                    // Copy weights from parent to child with mutation
+                    if (this.agent.weights) {
+                        // Clone parent weights
+                        const parentWeights = {...this.agent.weights};
+                        
+                        // Apply random mutations (10-20% variation)
+                        for (const key in parentWeights) {
+                            const mutationFactor = 0.9 + (Math.random() * 0.2); // 0.9 to 1.1
+                            parentWeights[key] = parentWeights[key] * mutationFactor;
+                        }
+                        
+                        // Transfer weights to child
+                        newThronglet.agent.weights = parentWeights;
+                        console.log(`Transferred neural weights from Thronglet #${this.id} to Thronglet #${newThronglet.id} with mutation`);
+                    }
+                    
+                    // Transfer concept weights if available
+                    if (this.agent.weightsByConcept) {
+                        newThronglet.agent.weightsByConcept = JSON.parse(JSON.stringify(this.agent.weightsByConcept));
+                        
+                        // Apply slight mutations to concept weights
+                        for (const concept in newThronglet.agent.weightsByConcept) {
+                            for (const key in newThronglet.agent.weightsByConcept[concept]) {
+                                const mutationFactor = 0.85 + (Math.random() * 0.3); // 0.85 to 1.15
+                                newThronglet.agent.weightsByConcept[concept][key] *= mutationFactor;
+                            }
+                        }
+                    }
+                    
+                    // Transfer concept knowledge with slight variation
+                    if (this.agent.conceptKnowledge) {
+                        newThronglet.agent.conceptKnowledge = {...this.agent.conceptKnowledge};
+                        
+                        // Apply slight variations to knowledge
+                        for (const concept in newThronglet.agent.conceptKnowledge) {
+                            const variation = Math.random() * 0.1 - 0.05; // -0.05 to 0.05
+                            newThronglet.agent.conceptKnowledge[concept] = 
+                                Math.min(1, Math.max(0, newThronglet.agent.conceptKnowledge[concept] + variation));
+                        }
+                    }
+                }
+                
                 // Track multiplication in global context
                 trackEvent('thronglet_multiplied', {
                     parentId: this.id,
                     childId: newThronglet.id,
                     parentHunger: this.hunger,
-                    parentHappiness: this.happiness
+                    parentHappiness: this.happiness,
+                    neuralNetworkInherited: (this.agent && newThronglet.agent) ? true : false
                 });
                 
                 // Add to Thronglet's personal memory
                 addThrongletMemory(this.id, 'multiplication', `I multiplied and created Thronglet #${newThronglet.id}.`);
+                
+                // Add inherited knowledge memory to child
+                if (this.agent && newThronglet.agent) {
+                    addThrongletMemory(newThronglet.id, 'inheritance', 
+                        `I inherited neural patterns from my parent Thronglet #${this.id}.`);
+                }
                 
                 // Update the counter
                 updateThrongletCounter();
@@ -2040,7 +2319,8 @@
             }
         }
         
-        egg.addEventListener('click', () => {
+        // Define the egg click handler function
+        function handleEggClick() {
             clicks++;
             
             // Initialize audio context on first interaction
@@ -2092,7 +2372,10 @@
                     }, 1000);
                 }, 500);
             }
-        });
+        }
+        
+        // Use the anonymous function for direct binding
+        egg.addEventListener('click', handleEggClick);
         
         function gameLoop() {
             if (!gameActive) return;
@@ -2355,19 +2638,68 @@
         }
 
         function queueLlmRequest(prompt, thronglet, isCreatorConversation = false) {
-            // Learning agent has replaced the LLM system
+            // If language system is enabled and loaded, use it
+            if (window.ThrongletLanguage && window.ThrongletLanguage.isEnabled()) {
+                // Initialize if not loaded
+                if (!window.ThrongletLanguage.isLoaded()) {
+                    thronglet.showThought("Learning to communicate...");
+                    window.ThrongletLanguage.initialize().then(() => {
+                        processLanguageLearningResponse(prompt, thronglet, isCreatorConversation);
+                    });
+                } else {
+                    processLanguageLearningResponse(prompt, thronglet, isCreatorConversation);
+                }
+            } else {
+                // Fallback to original behavior
             if (thronglet && thronglet.agent) {
                 // Let the agent decide
                 thronglet.makeDecisions();
             } else {
                 // Default behavior
                 thronglet.showThought("I'm learning to think for myself!");
+                }
+            }
+        }
+        
+        // Process language learning responses
+        async function processLanguageLearningResponse(prompt, thronglet, isCreatorConversation) {
+            if (!thronglet) return;
+            
+            try {
+                // Process the language input and generate a response
+                const response = await window.ThrongletLanguage.processInput(prompt, thronglet);
+                
+                // Show the response
+                thronglet.showThought(response);
+                
+                // Store in memory
+                if (globalContext && globalContext.throngletMemory && globalContext.throngletMemory[thronglet.id]) {
+                    addThrongletMemory(thronglet.id, 'language_response', response);
+                }
+                
+                // Take action based on the response content
+                if (response.toLowerCase().includes("hungry") || response.toLowerCase().includes("food") || 
+                    response.toLowerCase().includes("apple")) {
+                    handleThrongletAction(thronglet, "seek_food");
+                } else if (response.toLowerCase().includes("play") || response.toLowerCase().includes("ball") || 
+                           response.toLowerCase().includes("fun")) {
+                    handleThrongletAction(thronglet, "seek_play");
+                } else if (response.toLowerCase().includes("friend") || response.toLowerCase().includes("hello") || 
+                           response.toLowerCase().includes("together")) {
+                    handleThrongletAction(thronglet, "moveToThronglet");
+                } else if (response.toLowerCase().includes("explore") || response.toLowerCase().includes("curious")) {
+                    handleThrongletAction(thronglet, "wander");
+                }
+            } catch (error) {
+                console.error("Error processing language response:", error);
+                thronglet.showThought("Beep! (I'm learning)");
+                thronglet.makeDecisions(); // Fallback to default behavior
             }
         }
         
         async function processLlmQueue() {
-            // Learning agent has replaced the LLM system
-            console.log("LLM queue processing has been replaced by learning agent system");
+            // Language learning system has replaced the LLM queue
+            console.log("LLM queue processing has been replaced by language learning system");
         }
 
         function handleThrongletAction(thronglet, action) {
@@ -2397,7 +2729,7 @@
             else if (action.includes("multiply")) {
                 // Try to multiply if conditions allow
                 const currentTime = Date.now();
-                if (currentTime - thronglet.lastMultiplyTime >= 30000 && thronglet.canMultiply && thronglets.length < 5) {
+                if (currentTime - thronglet.lastMultiplyTime >= 30000 && thronglet.canMultiply && thronglets.length < 100) {
                     thronglet.multiply();
                 }
             }
@@ -2409,8 +2741,18 @@
         }
 
         function setupLlmIntegration() {
+            // Get reference to container
+            const container = document.getElementById('game-container');
+            
+            // Check for existing buttons (to prevent duplicates)
+            if (container.querySelector('#language-status')) {
+                console.log("UI elements already set up, preventing duplication");
+                return;
+            }
+            
             // Create a status indicator
             const statusLabel = document.createElement('div');
+            statusLabel.id = 'language-status';
             statusLabel.textContent = 'Learning AI System Enabled';
             statusLabel.style.color = 'white';
             statusLabel.style.backgroundColor = '#8e44ad'; // Purple for new system
@@ -2419,36 +2761,230 @@
             statusLabel.style.margin = '10px auto';
             statusLabel.style.width = 'fit-content';
             
-            // Feature suggestions display button
-            const suggestionsButton = document.createElement('button');
-            suggestionsButton.textContent = 'View Feature Suggestions';
-            suggestionsButton.style.padding = '8px 15px';
-            suggestionsButton.style.backgroundColor = '#3498db';
-            suggestionsButton.style.color = 'white';
-            suggestionsButton.style.border = 'none';
-            suggestionsButton.style.borderRadius = '5px';
-            suggestionsButton.style.cursor = 'pointer';
-            suggestionsButton.style.display = 'block';
-            suggestionsButton.style.margin = '5px auto';
+            // Language system toggle button
+            const languageButton = document.createElement('button');
+            languageButton.id = 'language-toggle-btn';
+            languageButton.textContent = 'Toggle Language Learning';
+            languageButton.style.padding = '8px 15px';
+            languageButton.style.backgroundColor = '#9b59b6';
+            languageButton.style.color = 'white';
+            languageButton.style.border = 'none';
+            languageButton.style.borderRadius = '5px';
+            languageButton.style.cursor = 'pointer';
+            languageButton.style.display = 'block';
+            languageButton.style.margin = '5px auto';
             
-            suggestionsButton.addEventListener('click', () => {
-                const features = localStorage.getItem("throngletFeatures") || "No features suggested yet.";
-                alert(features);
+            languageButton.addEventListener('click', () => {
+                if (window.ThrongletLanguage) {
+                    const currentState = window.ThrongletLanguage.isEnabled();
+                    window.ThrongletLanguage.setEnabled(!currentState);
+                    languageButton.style.backgroundColor = !currentState ? '#9b59b6' : '#95a5a6';
+                    
+                    // Initialize if being enabled
+                    if (!currentState && !window.ThrongletLanguage.isLoaded()) {
+                        window.ThrongletLanguage.initialize();
+                    }
+                    
+                    // Notify a random Thronglet
+                    if (thronglets.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * thronglets.length);
+                        const randomThronglet = thronglets[randomIndex];
+                        
+                        if (!currentState) {
+                            randomThronglet.showThought("My language centers are activating!");
+                    } else {
+                            randomThronglet.showThought("Back to basic communication!");
+                        }
+                    }
+            } else {
+                    alert("Language system not available yet!");
+                }
             });
-
-            // Add context view button
-            const contextButton = document.createElement('button');
-            contextButton.textContent = 'View Thronglet Memory';
-            contextButton.style.padding = '8px 15px';
-            contextButton.style.backgroundColor = '#9b59b6';
-            contextButton.style.color = 'white';
-            contextButton.style.border = 'none';
-            contextButton.style.borderRadius = '5px';
-            contextButton.style.cursor = 'pointer';
-            contextButton.style.display = 'block';
-            contextButton.style.margin = '5px auto';
             
-            contextButton.addEventListener('click', () => {
+            // Teach word button
+            const teachButton = document.createElement('button');
+            teachButton.id = 'teach-word-btn';
+            teachButton.textContent = 'Teach New Word';
+            teachButton.style.padding = '8px 15px';
+            teachButton.style.backgroundColor = '#3498db';
+            teachButton.style.color = 'white';
+            teachButton.style.border = 'none';
+            teachButton.style.borderRadius = '5px';
+            teachButton.style.cursor = 'pointer';
+            teachButton.style.display = 'block';
+            teachButton.style.margin = '5px auto';
+            
+            teachButton.addEventListener('click', () => {
+                if (!window.ThrongletLanguage || !window.ThrongletLanguage.isEnabled()) {
+                    alert("Please enable the language learning system first!");
+                    return;
+                }
+                
+                // Get word and context from user
+                const word = prompt("Enter a word to teach the Thronglets:");
+                if (!word) return;
+                
+                const context = prompt("In what context should this word be used? (e.g., food, play, friend):");
+                if (!context) return;
+                
+                // Teach the word
+                if (window.ThrongletLanguage.teachWord(word, context)) {
+                    alert(`Successfully taught the word "${word}" to all Thronglets!`);
+                    
+                    const morsePattern = window.ThrongletLanguage.textToMorse(word);
+                    
+                    // Make a random Thronglet show they've learned
+                    if (thronglets.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * thronglets.length);
+                        thronglets[randomIndex].showThought(`I learned "${word}"! (${morsePattern})`);
+                    }
+                } else {
+                    alert("Failed to teach word. Try again later.");
+                }
+            });
+            
+            // Auto-teach button
+            const autoTeachButton = document.createElement('button');
+            autoTeachButton.id = 'auto-teach-btn';
+            autoTeachButton.textContent = 'Enable Auto-Teaching AI';
+            autoTeachButton.style.padding = '8px 15px';
+            autoTeachButton.style.backgroundColor = '#e67e22';
+            autoTeachButton.style.color = 'white';
+            autoTeachButton.style.border = 'none';
+            autoTeachButton.style.borderRadius = '5px';
+            autoTeachButton.style.cursor = 'pointer';
+            autoTeachButton.style.display = 'block';
+            autoTeachButton.style.margin = '5px auto';
+            
+            autoTeachButton.addEventListener('click', () => {
+                if (!window.ThrongletLanguage || !window.ThrongletLanguage.isEnabled()) {
+                    alert("Please enable the language learning system first!");
+                return;
+            }
+            
+                const isCurrentlyEnabled = window.ThrongletLanguage.isAutoTeachEnabled();
+                window.ThrongletLanguage.setAutoTeachEnabled(!isCurrentlyEnabled);
+                
+                // Update button appearance
+                if (!isCurrentlyEnabled) {
+                    autoTeachButton.textContent = 'Disable Auto-Teaching AI';
+                    autoTeachButton.style.backgroundColor = '#d35400';
+                    
+                    // Show notification
+                    if (thronglets.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * thronglets.length);
+                        thronglets[randomIndex].showThought("I'll learn new words automatically!");
+                    }
+                } else {
+                    autoTeachButton.textContent = 'Enable Auto-Teaching AI';
+                    autoTeachButton.style.backgroundColor = '#e67e22';
+                    
+                    // Show notification
+                    if (thronglets.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * thronglets.length);
+                        thronglets[randomIndex].showThought("Auto-teaching stopped.");
+                    }
+                }
+            });
+            
+            // Teaching History button
+            const historyButton = document.createElement('button');
+            historyButton.id = 'teaching-history-btn';
+            historyButton.textContent = 'View Teaching History';
+            historyButton.style.padding = '8px 15px';
+            historyButton.style.backgroundColor = '#9b59b6'; // Purple color
+            historyButton.style.color = 'white';
+            historyButton.style.border = 'none';
+            historyButton.style.borderRadius = '5px';
+            historyButton.style.cursor = 'pointer';
+            historyButton.style.display = 'block';
+            historyButton.style.margin = '5px auto';
+            
+            historyButton.addEventListener('click', () => {
+                if (!window.ThrongletLanguage) {
+                    alert("Language system not available");
+                    return;
+                }
+                
+                const history = window.ThrongletLanguage.getTeachingHistory();
+                
+                if (history.length === 0) {
+                    alert("No words have been auto-taught yet.");
+                    return;
+                }
+                
+                // Format history for display
+                let historyText = "🧠 TEACHING HISTORY 🧠\n\n";
+                history.forEach((item, index) => {
+                    historyText += `${index + 1}. "${item.word}" (${item.timeAgo})\n`;
+                    historyText += `   Associations: ${Object.keys(item.associations).join(", ")}\n`;
+                    if (item.reason) {
+                        historyText += `   Reason: ${item.reason}\n`;
+                    }
+                    historyText += "\n";
+                });
+                
+                alert(historyText);
+            });
+            
+            // Vocabulary button
+            const vocabButton = document.createElement('button');
+            vocabButton.id = 'view-vocab-btn';
+            vocabButton.textContent = 'View Vocabulary';
+            vocabButton.style.padding = '8px 15px';
+            vocabButton.style.backgroundColor = '#2ecc71';
+            vocabButton.style.color = 'white';
+            vocabButton.style.border = 'none';
+            vocabButton.style.borderRadius = '5px';
+            vocabButton.style.cursor = 'pointer';
+            vocabButton.style.display = 'block';
+            vocabButton.style.margin = '5px auto';
+            
+            vocabButton.addEventListener('click', () => {
+                if (!window.ThrongletLanguage || !window.ThrongletLanguage.isEnabled()) {
+                    alert("Please enable the language learning system first!");
+                    return;
+                }
+                
+                // Get vocabulary stats
+                const stats = window.ThrongletLanguage.getStats();
+                
+                // Format vocabulary info
+                let vocabInfo = "THRONGLET VOCABULARY STATS\n\n";
+                vocabInfo += `Total Words: ${stats.totalWords}\n\n`;
+                
+                vocabInfo += "Words by Category:\n";
+                for (const category in stats.wordsByCategory) {
+                    vocabInfo += `  ${category}: ${stats.wordsByCategory[category]}\n`;
+                }
+                
+                vocabInfo += "\nMost Used Words:\n";
+                stats.mostUsedWords.forEach(word => {
+                    vocabInfo += `  "${word.word}" (${word.category}) - Weight: ${word.weight.toFixed(2)}\n`;
+                });
+                
+                vocabInfo += "\nRecently Learned Words:\n";
+                stats.recentlyLearnedWords.forEach(word => {
+                    vocabInfo += `  "${word.word}" - From: ${word.learnedFrom}, At: ${word.learnedAt}\n`;
+                });
+                
+                alert(vocabInfo);
+            });
+            
+            // Memory view button
+            const memoryButton = document.createElement('button');
+            memoryButton.id = 'view-memory-btn';
+            memoryButton.textContent = 'View Thronglet Memory';
+            memoryButton.style.padding = '8px 15px';
+            memoryButton.style.backgroundColor = '#9b59b6';
+            memoryButton.style.color = 'white';
+            memoryButton.style.border = 'none';
+            memoryButton.style.borderRadius = '5px';
+            memoryButton.style.cursor = 'pointer';
+            memoryButton.style.display = 'block';
+            memoryButton.style.margin = '5px auto';
+            
+            memoryButton.addEventListener('click', () => {
                 if (thronglets.length === 0) {
                     alert("No Thronglets available yet. Hatch the egg first!");
                     return;
@@ -2470,7 +3006,7 @@
                         addThrongletMemory(activeThronglet.id, 'birth', 'I was hatched from an egg');
                         
                         alert(`Memory initialized for Thronglet #${activeThronglet.id}. Click View Memory again.`);
-                    } else {
+                } else {
                         let memoryText = `Thronglet #${activeThronglet.id} Memory:\n\n`;
                         
                         // Sort by newest first
@@ -2488,22 +3024,20 @@
                 }
             });
             
-            // Add a helper function to ensure all Thronglets have memory initialized
-            // Add this after loadFeaturesFromStorage
-
+            // Helper function to ensure all Thronglets have memory initialized
             function ensureAllThrongletsHaveMemory() {
                 console.log("Ensuring all Thronglets have memory initialized");
                 
                 // Make sure globalContext has throngletMemory
                 if (!globalContext) {
-                    globalContext = {
-                        gameStartTime: Date.now(),
-                        sessionEvents: [],
-                        throngletMemory: {},
-                        appleHistory: [],
-                        ballHistory: [],
-                        creatorInteractions: []
-                    };
+            globalContext = {
+                gameStartTime: Date.now(),
+                sessionEvents: [],
+                throngletMemory: {},
+                appleHistory: [],
+                ballHistory: [],
+                creatorInteractions: []
+            };
                 }
                 
                 if (!globalContext.throngletMemory) {
@@ -2530,13 +3064,9 @@
                 saveContextToStorage();
             }
 
-            // Add elements to the game container
-            const container = document.getElementById('game-container');
-            container.appendChild(statusLabel);
-            container.appendChild(contextButton);
-            
-            // Add reset button
+            // Reset button
             const resetButton = document.createElement('button');
+            resetButton.id = 'reset-everything-btn';
             resetButton.textContent = 'RESET EVERYTHING';
             resetButton.style.padding = '8px 15px';
             resetButton.style.backgroundColor = '#e74c3c';
@@ -2550,1129 +3080,46 @@
             
             // Add warning dialogue
             resetButton.addEventListener('click', () => {
-                if (confirm("⚠️ WARNING: This will erase ALL game data including:\n\n- All Thronglet memories\n- Feature suggestions\n- Conversation history\n- Game state\n\nAre you sure you want to completely reset the game?")) {
+                if (confirm("⚠️ WARNING: This will erase ALL game data including:\n\n- All Thronglet memories\n- Language learning data\n- Feature suggestions\n- Conversation history\n- Game state\n\nAre you sure you want to completely reset the game?")) {
+                    // Also reset language system if active
+                    if (window.ThrongletLanguage) {
+                        window.ThrongletLanguage.reset();
+                    }
                     resetEverything();
                 }
             });
             
+            // Add elements to the game container
+            container.appendChild(statusLabel);
+            container.appendChild(languageButton);
+            container.appendChild(teachButton);
+            container.appendChild(autoTeachButton);
+            container.appendChild(historyButton);
+            container.appendChild(vocabButton);
+            container.appendChild(memoryButton);
+            
+            // Brain visualizer button
+            const brainButton = document.createElement('button');
+            brainButton.id = 'brain-visualizer-btn';
+            brainButton.textContent = 'Brain Visualizer';
+            brainButton.style.padding = '8px 15px';
+            brainButton.style.backgroundColor = '#1abc9c';
+            brainButton.style.color = 'white';
+            brainButton.style.border = 'none';
+            brainButton.style.borderRadius = '5px';
+            brainButton.style.cursor = 'pointer';
+            brainButton.style.display = 'block';
+            brainButton.style.margin = '5px auto';
+            
+            brainButton.addEventListener('click', () => {
+                openBrainVisualizer();
+            });
+            
+            container.appendChild(brainButton);
             container.appendChild(resetButton);
-            
-            // Add learning stats button
-            if (agentLearningEnabled) {
-                const learningStatsButton = document.createElement('button');
-                learningStatsButton.textContent = 'View Learning Stats';
-                learningStatsButton.style.padding = '8px 15px';
-                learningStatsButton.style.backgroundColor = '#2980b9';
-                learningStatsButton.style.color = 'white';
-                learningStatsButton.style.border = 'none';
-                learningStatsButton.style.borderRadius = '5px';
-                learningStatsButton.style.cursor = 'pointer';
-                learningStatsButton.style.display = 'block';
-                learningStatsButton.style.margin = '5px auto';
-                
-                learningStatsButton.addEventListener('click', showLearningStats);
-                container.appendChild(learningStatsButton);
-            }
-
-            // Add brain visualizer button
-            if (agentLearningEnabled) {
-                const brainVisualizerButton = document.createElement('button');
-                brainVisualizerButton.textContent = 'Brain Visualizer';
-                brainVisualizerButton.style.padding = '8px 15px';
-                brainVisualizerButton.style.backgroundColor = '#16a085';
-                brainVisualizerButton.style.color = 'white';
-                brainVisualizerButton.style.border = 'none';
-                brainVisualizerButton.style.borderRadius = '5px';
-                brainVisualizerButton.style.cursor = 'pointer';
-                brainVisualizerButton.style.display = 'block';
-                brainVisualizerButton.style.margin = '5px auto';
-                
-                brainVisualizerButton.addEventListener('click', openBrainVisualizer);
-                container.appendChild(brainVisualizerButton);
-            }
-            
-            // Initialize communication interface
-            initCommunicationInterface();
         }
 
-        // Communication interface functionality
-        function initCommunicationInterface() {
-            const toggleCommunicationBtn = document.getElementById('toggle-communication');
-            const communicationInterface = document.getElementById('communication-interface');
-            const messageInput = document.getElementById('message-input');
-            const messageTarget = document.getElementById('message-target');
-            const sendMessageBtn = document.getElementById('send-message');
-            const useMorseCheckbox = document.getElementById('use-morse');
-            const morsePreview = document.getElementById('morse-preview');
-            
-            if (!toggleCommunicationBtn || !communicationInterface) {
-                console.warn("Communication interface elements not found");
-                return;
-            }
-            
-            // Toggle communication interface visibility
-            toggleCommunicationBtn.addEventListener('click', () => {
-                const isVisible = communicationInterface.style.display === 'block';
-                communicationInterface.style.display = isVisible ? 'none' : 'block';
-                
-                if (!isVisible) {
-                    // Update Thronglet selector when showing the interface
-                    updateThrongletSelector();
-                    messageInput.focus();
-                }
-            });
-            
-            // Update Thronglet selector dropdown with current Thronglets
-            function updateThrongletSelector() {
-                // Clear existing options except "All Thronglets"
-                while (messageTarget.options.length > 1) {
-                    messageTarget.remove(1);
-                }
-                
-                // Add option for each Thronglet
-                thronglets.forEach(thronglet => {
-                    const option = document.createElement('option');
-                    option.value = thronglet.id;
-                    option.textContent = `Thronglet #${thronglet.id}`;
-                    messageTarget.appendChild(option);
-                });
-            }
-            
-            // Send message to Thronglets
-            sendMessageBtn.addEventListener('click', sendMessage);
-            
-            // Allow pressing Enter to send message
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendMessage();
-                }
-            });
-            
-            // Update Morse preview as user types
-            messageInput.addEventListener('input', updateMorsePreview);
-            
-            // Update Morse preview when checkbox changes
-            useMorseCheckbox.addEventListener('change', updateMorsePreview);
-            
-            // Function to send message to Thronglets
-            function sendMessage() {
-                const message = messageInput.value.trim();
-                
-                // Make sure we have a message to send
-                if (!message) {
-                    alert('Please enter a message to send.');
-                    return;
-                }
-                
-                // Get target Thronglet ID
-                const targetId = messageTarget.value;
-                
-                // Convert to morse if option is checked
-                const useMorse = useMorseCheckbox.checked;
-                const morseMessage = useMorse ? textToMorse(message) : message;
-                
-                // Track user message in global context
-                trackEvent('user_message', {
-                    message: message,
-                    target: targetId,
-                    usedMorse: useMorse
-                });
-                
-                // Find target Thronglets
-                let targetThronglets = [];
-                if (targetId === 'all') {
-                    targetThronglets = thronglets;
-                } else {
-                    const thronglet = thronglets.find(t => t.id.toString() === targetId);
-                    if (thronglet) {
-                        targetThronglets = [thronglet];
-                    }
-                }
-                
-                // Send message to each target Thronglet
-                if (targetThronglets.length > 0) {
-                    targetThronglets.forEach(thronglet => {
-                        // Add user message to Thronglet's memory
-                        addThrongletMemory(thronglet.id, 'received_message', `The Creator sent me: "${message}"`);
-                        
-                        // Display message in thought bubble
-                        const displayMessage = useMorse ? morseMessage : `Message from Creator: ${message}`;
-                        thronglet.showThought(displayMessage);
-                        
-                        // Play Morse code if enabled
-                        if (useMorse && audioContext) {
-                            const frequency = 300 + (thronglet.id * 10); // Unique frequency per Thronglet
-                            playMorseSequence(thronglet, [morseMessage], frequency);
-                        }
-                        
-                        // Have the Thronglet respond
-                        setTimeout(() => {
-                            respondToMessage(thronglet, message);
-                        }, 2000 + Math.random() * 1000); // Random delay for natural feel
-                    });
-                    
-                    // Clear the input field
-                    messageInput.value = '';
-                    morsePreview.textContent = '';
-                } else {
-                    alert('No Thronglets available to receive your message.');
-                }
-            }
-            
-            // Update Morse preview
-            function updateMorsePreview() {
-                if (useMorseCheckbox.checked) {
-                    const text = messageInput.value.trim();
-                    if (text) {
-                        morsePreview.textContent = textToMorse(text);
-                    } else {
-                        morsePreview.textContent = '';
-                    }
-                } else {
-                    morsePreview.textContent = '';
-                }
-            }
-            
-            // Thronglet response to user message
-            function respondToMessage(thronglet, message) {
-                // Base response on message content and Thronglet's state
-                let response = '';
-                
-                // Check if the message is in morse code
-                const morsePatterns = extractMorsePatterns(message);
-                if (morsePatterns.length > 0) {
-                    // Thronglet tries to decode the morse
-                    const translation = morseToText(morsePatterns[0]);
-                    
-                    if (translation) {
-                        // Thronglet understood the morse code
-                        response = `${morsePatterns[0]} means "${translation}"! I understand!`;
-                        
-                        // Add this morse pattern to Thronglet's knowledge
-                        if (!thronglet.morsePatterns) {
-                            thronglet.morsePatterns = [];
-                        }
-                        if (!thronglet.morsePatterns.includes(morsePatterns[0])) {
-                            thronglet.morsePatterns.push(morsePatterns[0]);
-                            
-                            // Show learning animation
-                            showLearningSparkle(thronglet.x, thronglet.y, "Learned Morse!");
-                        }
-                    } else {
-                        // Thronglet doesn't understand completely
-                        response = `I hear your beeps! I'm learning this code.`;
-                        
-                        // Still learn the pattern without translation
-                        if (!thronglet.morsePatterns) {
-                            thronglet.morsePatterns = [];
-                        }
-                        if (!thronglet.morsePatterns.includes(morsePatterns[0])) {
-                            thronglet.morsePatterns.push(morsePatterns[0]);
-                        }
-                    }
-                    
-                    // Respond with a morse pattern too sometimes
-                    if (thronglet.morsePatterns && thronglet.morsePatterns.length > 0 && Math.random() < 0.5) {
-                        const randomPattern = thronglet.morsePatterns[Math.floor(Math.random() * thronglet.morsePatterns.length)];
-                        response += ` ${randomPattern}`;
-                    }
-                } else {
-                    // Message was in plain text - respond based on content
-                    const messageLower = message.toLowerCase();
-                    
-                    // Basic responses based on common questions/commands
-                    if (messageLower.includes('hello') || messageLower.includes('hi')) {
-                        response = `Hello Creator! I'm Thronglet #${thronglet.id}!`;
-                    } else if (messageLower.includes('hungry') || messageLower.includes('food') || messageLower.includes('eat')) {
-                        response = thronglet.hunger > 70 
-                            ? `I'm feeling full (${thronglet.hunger}%)!` 
-                            : `Yes, I'm getting hungry (${thronglet.hunger}%)... Could I have some food?`;
-                    } else if (messageLower.includes('happy') || messageLower.includes('sad') || messageLower.includes('how are you')) {
-                        response = thronglet.happiness > 70 
-                            ? `I'm very happy (${thronglet.happiness}%)!` 
-                            : `I'm feeling a bit down (${thronglet.happiness}%)... Playing helps!`;
-                    } else if (messageLower.includes('play') || messageLower.includes('ball') || messageLower.includes('game')) {
-                        response = `I love playing with the ball! It makes me so happy!`;
-                    } else if (messageLower.includes('multiply') || messageLower.includes('friend') || messageLower.includes('more')) {
-                        response = thronglets.length < 5 
-                            ? `Yes, I'd love to multiply and make more friends!` 
-                            : `We're already ${thronglets.length} Thronglets! It's getting crowded!`;
-                    } else {
-                        // Generic responses for other messages
-                        const genericResponses = [
-                            `I understand, Creator!`,
-                            `Thank you for talking to me!`,
-                            `I'm learning every day!`,
-                            `It's nice to communicate with you!`,
-                            `I'll remember what you said!`
-                        ];
-                        response = genericResponses[Math.floor(Math.random() * genericResponses.length)];
-                    }
-                    
-                    // Sometimes add a morse code pattern to teach the user
-                    if (thronglet.morsePatterns && thronglet.morsePatterns.length > 0 && Math.random() < 0.3) {
-                        const randomPattern = thronglet.morsePatterns[Math.floor(Math.random() * thronglet.morsePatterns.length)];
-                        const translation = morseToText(randomPattern);
-                        response += ` Here's some morse: ${randomPattern}${translation ? ` (means "${translation}")` : ''}`;
-                    }
-                }
-                
-                // Add memory of response
-                addThrongletMemory(thronglet.id, 'sent_response', `I responded: "${response}"`);
-                
-                // Show response
-                thronglet.showThought(response);
-            }
-        }
-
-        function checkForFeatureSuggestion(text, throngletId) {
-            // Check for suggestion keywords
-            const suggestionKeywords = ["suggest", "feature", "add", "idea", "would be cool", "would be nice"];
-            const voteKeywords = ["vote", "agree", "like that", "good idea", "+1"];
-            
-            const textLower = text.toLowerCase();
-            
-            // Check if this is a new feature suggestion
-            if (suggestionKeywords.some(keyword => textLower.includes(keyword))) {
-                const feature = text.replace(/^.*?suggest|feature|add|idea|would be cool|would be nice/i, '').trim();
-                
-                if (feature && feature.length > 5) {
-                    console.log("Feature detected:", feature);
-                    
-                    // Add the feature to the suggestions list if it's not already there
-                    if (!suggestedFeatures.some(f => f.feature.toLowerCase() === feature.toLowerCase())) {
-                        suggestedFeatures.push({
-                            feature: feature,
-                            suggestedBy: throngletId
-                        });
-                        
-                        // Initialize votes for this feature
-                        featureVotes[feature] = [throngletId];
-                        
-                        // Add this suggestion to the Thronglet's memory
-                        addThrongletMemory(throngletId, 'suggestion', `I suggested: ${feature}`);
-                        
-                        // Track the feature suggestion in global context
-                        trackEvent('feature_suggestion', {
-                            throngletId: throngletId,
-                            feature: feature
-                        });
-                        
-                        // Save to storage
-                        saveFeaturesToFile();
-                        
-                        console.log("New feature added:", feature);
-                    }
-                }
-            }
-            // Check if this is a vote for an existing feature
-            else if (voteKeywords.some(keyword => textLower.includes(keyword))) {
-                // Try to find which feature they're voting for
-                for (const { feature } of suggestedFeatures) {
-                    if (textLower.includes(feature.toLowerCase())) {
-                        // Add vote if this Thronglet hasn't voted for this feature yet
-                        if (!featureVotes[feature] || !featureVotes[feature].includes(throngletId)) {
-                            if (!featureVotes[feature]) {
-                                featureVotes[feature] = [];
-                            }
-                            
-                            featureVotes[feature].push(throngletId);
-                            
-                            // Add this vote to the Thronglet's memory
-                            addThrongletMemory(throngletId, 'vote', `I voted for: ${feature}`);
-                            
-                            // Track the vote in global context
-                            trackEvent('feature_vote', {
-                                throngletId: throngletId,
-                                feature: feature
-                            });
-                            
-                            saveFeaturesToFile();
-                            console.log("Vote added for:", feature);
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-        
-        function saveFeaturesToFile() {
-            // Create a string with all the features and votes
-            let content = "🌟 THRONGLET FEATURE SUGGESTIONS 🌟\n\n";
-            
-            // Sort features by vote count (most votes first)
-            const sortedFeatures = [...suggestedFeatures].sort((a, b) => {
-                const votesA = featureVotes[a.feature] ? featureVotes[a.feature].length : 0;
-                const votesB = featureVotes[b.feature] ? featureVotes[b.feature].length : 0;
-                return votesB - votesA;
-            });
-            
-            sortedFeatures.forEach(({ feature, suggestedBy }) => {
-                const votes = featureVotes[feature] ? featureVotes[feature].length : 0;
-                content += `✨ FEATURE: ${feature}\n`;
-                content += `👤 Suggested by: Thronglet #${suggestedBy}\n`;
-                content += `🔢 Votes: ${votes}\n`;
-                if (votes > 0) {
-                    content += `👍 Voted by: ${featureVotes[feature].map(id => `Thronglet #${id}`).join(", ")}\n`;
-                }
-                content += `\n`;
-            });
-            
-            // Add timestamp
-            content += `Last updated: ${new Date().toLocaleString()}`;
-            
-            // Save to localStorage
-            localStorage.setItem("throngletFeatures", content);
-            console.log("Features saved successfully");
-            
-            // Also add to global context
-            trackEvent('features_updated', {
-                featureCount: suggestedFeatures.length,
-                topFeature: sortedFeatures.length > 0 ? sortedFeatures[0].feature : null
-            });
-        }
-        
-        function scheduleNextCreatorMeeting() {
-            // Schedule next meeting between 1-5 minutes from now
-            const minutesUntilMeeting = 1 + Math.floor(Math.random() * 4);
-            const millisecondsUntilMeeting = minutesUntilMeeting * 60 * 1000;
-            
-            nextCreatorMeetingTime = Date.now() + millisecondsUntilMeeting;
-            
-            console.log(`Next creator meeting in ${minutesUntilMeeting} minutes`);
-            
-            // Set timeout for the meeting
-            setTimeout(startCreatorMeeting, millisecondsUntilMeeting);
-        }
-        
-        function startCreatorMeeting() {
-            if (isCreatorMeeting) return; // Don't start if already in a meeting
-            
-            isCreatorMeeting = true;
-            isThrongletChatting = false; // End any ongoing chats
-            
-            // Clear chat cooldown
-            lastChatTime = 0;
-            
-            // Create visual indicator for meeting circle
-            const circleIndicator = document.createElement('div');
-            circleIndicator.id = 'meeting-circle';
-            circleIndicator.style.position = 'absolute';
-            circleIndicator.style.width = '300px';
-            circleIndicator.style.height = '300px';
-            circleIndicator.style.borderRadius = '50%';
-            circleIndicator.style.border = '2px dashed rgba(255, 255, 255, 0.5)';
-            circleIndicator.style.left = '250px';
-            circleIndicator.style.top = '150px';
-            circleIndicator.style.zIndex = '1';
-            gameScene.appendChild(circleIndicator);
-            
-            // Calculate positions around the circle for each Thronglet
-            const centerX = 400;
-            const centerY = 300;
-            const radius = 120;
-            const positions = [];
-            
-            for (let i = 0; i < thronglets.length; i++) {
-                const angle = (i / thronglets.length) * Math.PI * 2;
-                positions.push({
-                    x: centerX + Math.cos(angle) * radius,
-                    y: centerY + Math.sin(angle) * radius
-                });
-            }
-            
-            // Have Thronglets jump to their positions in the circle
-            for (let i = 0; i < thronglets.length; i++) {
-                thronglets[i].jump();
-                thronglets[i].moveTowards(positions[i].x, positions[i].y);
-            }
-            
-            // Play harmonic greeting sounds from all Thronglets
-            playCreatorMeetingChord();
-            
-            const questionPrompt = "What should we improve in the Thronglets? Please suggest a feature.";
-            
-            // Wait for Thronglets to get to positions, then start the meeting
-            setTimeout(() => {
-                message.textContent = "Creator Meeting in progress. Thronglets are sharing their ideas.";
-                
-                // Display predefined feature suggestions
-                const suggestions = [
-                    "More interactive toys",
-                    "Weather system for the environment",
-                    "Ability to build shelters",
-                    "Different food types",
-                    "Custom appearance options"
-                ];
-                
-                // Start with the first Thronglet
-                processMeetingThronglet(0, suggestions);
-            }, 1500);
-            
-            // Process suggestions from Thronglets
-            function processMeetingThronglet(index, suggestions) {
-                if (index >= thronglets.length) {
-                    // All Thronglets have spoken, now vote on suggestions
-                    voteOnSuggestions();
-                    return;
-                }
-                
-                setTimeout(() => {
-                    // Get a suggestion for this Thronglet
-                    let suggestion;
-                    if (index < suggestions.length) {
-                        suggestion = suggestions[index];
-                    } else {
-                        // For extra Thronglets, generate a random suggestion
-                        const extraSuggestions = [
-                            "Night/day cycle",
-                            "More complex emotions",
-                            "Special abilities",
-                            "Thronglet school",
-                            "Gardening activities"
-                        ];
-                        suggestion = extraSuggestions[Math.floor(Math.random() * extraSuggestions.length)];
-                    }
-                    
-                    // Show the suggestion
-                    thronglets[index].showThought(suggestion);
-                    
-                    // Add suggestion to meeting record
-                    meetingSuggestions.push({
-                        id: thronglets[index].id,
-                        text: suggestion,
-                        category: "feature",
-                        votes: 0
-                    });
-                    
-                    // Add to memory
-                    addThrongletMemory(thronglets[index].id, 'suggestion', `I suggested: ${suggestion}`);
-                    
-                    // Continue with next Thronglet
-                    processMeetingThronglet(index + 1, suggestions);
-                }, 4000); // Wait 4 seconds between Thronglets speaking
-            }
-            
-            // Have Thronglets vote on suggestions
-            function voteOnSuggestions() {
-                message.textContent = "Thronglets are now voting on their favorite suggestions.";
-                
-                setTimeout(() => {
-                    // Each Thronglet votes
-                    for (const thronglet of thronglets) {
-                        // Skip voting if no suggestions
-                        if (meetingSuggestions.length === 0) continue;
-                        
-                        // Each Thronglet votes for their preferred suggestion
-                        const votedIndex = Math.floor(Math.random() * meetingSuggestions.length);
-                        meetingSuggestions[votedIndex].votes++;
-                        
-                        // Show voting animation
-                        thronglet.jump();
-                        thronglet.showThought(`I vote for: "${truncateText(meetingSuggestions[votedIndex].text, 15)}..."`);
-                    }
-                    
-                    // After voting, find winner and save
-                    setTimeout(() => {
-                        finalizeCreatorMeeting();
-                    }, 3000);
-                }, 2000);
-            }
-            
-            // Finalize meeting and save top suggestion
-            function finalizeCreatorMeeting() {
-                // Sort suggestions by votes
-                meetingSuggestions.sort((a, b) => b.votes - a.votes);
-                
-                // Announce winner
-                if (meetingSuggestions.length > 0) {
-                    const winningFeature = meetingSuggestions[0];
-                    message.textContent = `Meeting complete! Top suggestion: "${winningFeature.text}" with ${winningFeature.votes} vote(s).`;
-                    
-                    // Play victory sound chord
-                    playCreatorMeetingChord(true);
-                    
-                    // Save suggestion to features list
-                    savedFeatures.push({
-                        text: winningFeature.text,
-                        votes: winningFeature.votes,
-                        category: winningFeature.category,
-                        timestamp: Date.now()
-                    });
-                    
-                    // Save features to local storage
-                    localStorage.setItem('throngletFeatures', JSON.stringify(savedFeatures));
-                } else {
-                    message.textContent = "Meeting complete! No suggestions were made.";
-                }
-                
-                // End meeting
-                setTimeout(() => {
-                    endCreatorMeeting();
-                }, 5000);
-            }
-        }
-
-        // Function to play harmonious chord during creator meetings
-        function playCreatorMeetingChord(isVictory = false) {
-            if (!audioContext) return; // Skip if audio not supported
-            
-            // Base frequencies for a pleasant C major chord (C, E, G)
-            const baseNotes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
-            
-            // For victory chord, use a more celebratory chord (C major 7th)
-            const victoryNotes = [261.63, 329.63, 392.00, 466.16, 523.25]; // C4, E4, G4, B4, C5
-            
-            const notes = isVictory ? victoryNotes : baseNotes;
-            
-            // Create oscillators for each Thronglet, assigned to different notes in the chord
-            thronglets.forEach((thronglet, index) => {
-                // Select a note from the chord (cycling through the notes)
-                const noteIndex = index % notes.length;
-                const frequency = notes[noteIndex];
-                
-                // Create oscillator
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                // Connect
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                // Set properties
-                oscillator.type = 'sine';
-                oscillator.frequency.value = frequency;
-                
-                // Set volume
-                gainNode.gain.value = 0.1; // Quiet so they blend well
-                
-                // Start with fade in
-                oscillator.start();
-                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-                gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.2);
-                
-                // Fade out
-                const duration = isVictory ? 2.0 : 1.2;
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime + 0.2);
-                gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration);
-                
-                // Stop after duration
-                oscillator.stop(audioContext.currentTime + duration + 0.1);
-                
-                // Add visual sparkle effect for the sounding Thronglet
-                const sparkle = document.createElement('div');
-                sparkle.className = 'sparkle';
-                sparkle.style.position = 'absolute';
-                sparkle.style.left = (thronglet.x - 10) + 'px';
-                sparkle.style.top = (thronglet.y - 10) + 'px';
-                sparkle.style.width = '20px';
-                sparkle.style.height = '20px';
-                sparkle.style.borderRadius = '50%';
-                sparkle.style.background = `radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%)`;
-                sparkle.style.animation = 'sparkle 1s ease-out';
-                sparkle.style.zIndex = '20';
-                gameScene.appendChild(sparkle);
-                
-                // Remove sparkle after animation
-                setTimeout(() => {
-                    if (gameScene.contains(sparkle)) {
-                        gameScene.removeChild(sparkle);
-                    }
-                }, 1000);
-            });
-        }
-
-        // Add this CSS to your stylesheet
-        const styleSheet = document.styleSheets[0];
-        styleSheet.insertRule(`
-            @keyframes sparkle {
-                0% { transform: scale(0.5); opacity: 1; }
-                100% { transform: scale(2); opacity: 0; }
-            }
-        `, styleSheet.cssRules.length);
-
-        function endCreatorMeeting() {
-            isCreatorMeeting = false;
-            meetingSuggestions = [];
-            
-            // Remove the meeting circle indicator
-            const circleIndicator = document.getElementById('meeting-circle');
-            if (circleIndicator) {
-                circleIndicator.parentNode.removeChild(circleIndicator);
-            }
-            
-            // Reset Thronglet positions
-            for (const thronglet of thronglets) {
-                thronglet.isCurrentlySpeaking = false;
-                const borderPadding = 60;
-                const randomX = borderPadding + Math.random() * (sceneWidth - 2 * borderPadding);
-                const randomY = borderPadding + Math.random() * (sceneHeight - 2 * borderPadding);
-                thronglet.moveTowards(randomX, randomY);
-            }
-            
-            // Update UI
-            message.textContent = "Meeting ended. Call another meeting any time by clicking the button.";
-        }
-
-        function queueLlmConversationRequest(prompt, speakingThronglet, listeningThronglet, conversationKey) {
-            if (!isLlmEnabled) return;
-            
-            llmRequestQueue.push({ 
-                prompt, 
-                speakingThronglet, 
-                listeningThronglet, 
-                conversationKey,
-                isConversation: true 
-            });
-            
-            processLlmQueue();
-        }
-
-        function buildSocialContext(thronglet) {
-            let relationships = [];
-            
-            // Check for parent-child relationships
-            if (thronglet.parentId !== null) {
-                relationships.push(`Thronglet #${thronglet.parentId} is your parent.`);
-            }
-            
-            // Find all children
-            const children = thronglets.filter(t => t.parentId === thronglet.id);
-            if (children.length > 0) {
-                relationships.push(`You have ${children.length} offspring: ${children.map(c => `#${c.id}`).join(', ')}.`);
-            }
-            
-            // Check for conversation history with other Thronglets
-            for (const key in ongoingConversations) {
-                const [id1, id2] = key.split('_').map(Number);
-                if (id1 === thronglet.id || id2 === thronglet.id) {
-                    const otherId = id1 === thronglet.id ? id2 : id1;
-                    const convoCount = ongoingConversations[key].length;
-                    if (convoCount > 0) {
-                        relationships.push(`You've had ${convoCount} conversation exchanges with Thronglet #${otherId}.`);
-                    }
-                }
-            }
-            
-            if (relationships.length === 0) {
-                return "You don't have any established relationships with other Thronglets yet.";
-            } else {
-                return "Your relationships:\n" + relationships.join("\n");
-            }
-        }
-
-        function clearContextMemory() {
-            globalContext = {
-                gameStartTime: Date.now(),
-                sessionEvents: [],
-                throngletMemory: {},
-                appleHistory: [],
-                ballHistory: [],
-                creatorInteractions: []
-            };
-            saveContextToStorage();
-            console.log("Context memory cleared");
-        }
-
-        // Add initialization of suggested features from storage during startup
-        // Add this immediately after loadContextFromStorage() function call
-        function loadFeaturesFromStorage() {
-            try {
-                // Try to load any existing features
-                const savedFeatureString = localStorage.getItem("throngletFeatures");
-                if (savedFeatureString) {
-                    console.log("Found saved features");
-                    
-                    // Extract features and votes from the formatted string
-                    const featureMatches = savedFeatureString.matchAll(/FEATURE: (.+?)\n.*?Suggested by: Thronglet #(\d+)/gs);
-                    if (featureMatches) {
-                        for (const match of featureMatches) {
-                            const feature = match[1];
-                            const suggestedBy = parseInt(match[2]);
-                            
-                            // Add to suggestions array if not already there
-                            if (!suggestedFeatures.some(f => f.feature === feature)) {
-                                suggestedFeatures.push({
-                                    feature,
-                                    suggestedBy
-                                });
-                                
-                                // Try to extract votes
-                                const voteMatch = savedFeatureString.match(new RegExp(`FEATURE: ${feature.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?Voted by: (.+?)\\n`, 'i'));
-                                if (voteMatch && voteMatch[1]) {
-                                    const voterIds = voteMatch[1].match(/Thronglet #(\d+)/g).map(v => parseInt(v.replace('Thronglet #', '')));
-                                    featureVotes[feature] = voterIds;
-                                } else {
-                                    featureVotes[feature] = [suggestedBy];
-                                }
-                            }
-                        }
-                        console.log(`Loaded ${suggestedFeatures.length} saved features`);
-                    }
-                }
-            } catch (e) {
-                console.warn("Failed to load features from localStorage:", e);
-            }
-        }
-        
-        // Call loadFeaturesFromStorage after loadContextFromStorage() call
-        // Try to load context on startup
-        loadContextFromStorage();
-        loadFeaturesFromStorage();
-        
-        // Complete reset function that clears all game data
-        function resetEverything() {
-            // Clear all localStorage data
-            localStorage.removeItem('throngletContext');
-            localStorage.removeItem('throngletFeatures');
-            
-            // Reset global variables
-            globalContext = {
-                gameStartTime: Date.now(),
-                sessionEvents: [],
-                throngletMemory: {},
-                appleHistory: [],
-                ballHistory: [],
-                creatorInteractions: []
-            };
-            
-            suggestedFeatures = [];
-            featureVotes = {};
-            conversationHistory = [];
-            
-            // Clear all Thronglets from the game
-            while (thronglets.length > 0) {
-                const thronglet = thronglets.pop();
-                if (thronglet.element && thronglet.element.parentNode) {
-                    thronglet.element.parentNode.removeChild(thronglet.element);
-                }
-                if (thronglet.statsElement && thronglet.statsElement.parentNode) {
-                    thronglet.statsElement.parentNode.removeChild(thronglet.statsElement);
-                }
-            }
-            
-            // Reset Thronglet counter
-            nextThrongletId = 0;
-            
-            // Remove all apples from the game
-            apples.forEach(apple => {
-                if (apple.element && apple.element.parentNode) {
-                    apple.element.parentNode.removeChild(apple.element);
-                }
-            });
-            apples = [];
-            
-            // Remove all balls from the game
-            balls.forEach(ball => {
-                if (ball.element && ball.element.parentNode) {
-                    ball.element.parentNode.removeChild(ball.element);
-                }
-            });
-            balls = [];
-            
-            // Add apple tree reset:
-            // Remove all apple trees from the game
-            appleTrees.forEach(tree => {
-                if (tree.element && tree.element.parentNode) {
-                    tree.element.parentNode.removeChild(tree.element);
-                }
-            });
-            appleTrees = [];
-            nextAppleTreeId = 0;
-            
-            // Remove any falling apples
-            fallingApples.forEach(apple => {
-                if (apple.element && apple.element.parentNode) {
-                    apple.element.parentNode.removeChild(apple.element);
-                }
-            });
-            fallingApples = [];
-            
-            // Reset game state
-            gameActive = false;
-            
-            // Show the egg again
-            egg.style.display = 'block';
-            clicks = 0;
-            message.textContent = "Click the egg to hatch your Thronglet!";
-            
-            // Hide UI elements
-            commandCenter.style.display = 'none';
-            itemButtons.style.display = 'none';
-            
-            // Update counter
-            updateThrongletCounter();
-            
-            console.log("Game fully reset - all data cleared");
-            
-            // Show confirmation
-            alert("Game reset complete! All memory, history, and feature requests have been erased. Click the egg to start again.");
-            
-            // Add reset of agent learning
-            stateActionHistory = [];
-            globalStateHistory = [];
-            teamworkEvents = [];
-            teamworkRewards = {};
-            
-            // Reset exploration rate and observation phase
-            explorationRate = 0.3;
-            observationPhase = true;
-            observationStartTime = null;
-            
-            // Reset beep patterns
-            beepPatterns.forEach(pattern => {
-                pattern.rewards = 0;
-                pattern.uses = 0;
-            });
-            
-            console.log("Agent learning system reset");
-        }
-
-        // Mobile device detection
-        function isMobileDevice() {
-            return (window.innerWidth <= 800) || 
-                   (navigator.userAgent.match(/Android/i) ||
-                    navigator.userAgent.match(/webOS/i) ||
-                    navigator.userAgent.match(/iPhone/i) ||
-                    navigator.userAgent.match(/iPad/i) ||
-                    navigator.userAgent.match(/iPod/i) ||
-                    navigator.userAgent.match(/BlackBerry/i) ||
-                    navigator.userAgent.match(/Windows Phone/i));
-        }
-        
-        // Show mobile warning if on a mobile device
-        if (isMobileDevice()) {
-            document.getElementById('mobile-warning').style.display = 'flex';
-            document.getElementById('continue-anyway').addEventListener('click', function() {
-                document.getElementById('mobile-warning').style.display = 'none';
-            });
-        } else {
-            document.getElementById('mobile-warning').style.display = 'none';
-        }
-
-        // Add apple tree variables after other game variables
-        let appleTreeCount = 0;
-        let appleTrees = [];
-        let nextAppleTreeId = 0;
-        let fallingApples = [];
-        let maxAppleTrees = 3;
-
-        // Add apple tree creation function after the createTree function
-        function createAppleTree(x, y) {
-            // Limit the number of apple trees
-            if (appleTrees.length >= maxAppleTrees) return null;
-            
-            const appleTree = document.createElement('div');
-            appleTree.className = 'apple-tree';
-            appleTree.style.left = x + 'px';
-            appleTree.style.top = y + 'px';
-            
-            const id = nextAppleTreeId++;
-            appleTree.dataset.id = id;
-            
-            // Create 3-5 apples on the tree
-            const appleCount = 3 + Math.floor(Math.random() * 3);
-            const apples = [];
-            
-            for (let i = 0; i < appleCount; i++) {
-                const apple = document.createElement('div');
-                apple.className = 'tree-apple';
-                
-                // Position apples randomly in the tree crown
-                const angle = Math.random() * Math.PI * 2;
-                const distance = 5 + Math.random() * 15;
-                const appleX = 25 + Math.cos(angle) * distance;
-                const appleY = 15 + Math.sin(angle) * distance;
-                
-                apple.style.left = appleX + 'px';
-                apple.style.top = appleY + 'px';
-                
-                // Store apple data
-                apples.push({
-                    element: apple,
-                    x: appleX,
-                    y: appleY,
-                    dropTime: Date.now() + 10000 + Math.random() * 20000 // Drop between 10-30 seconds
-                });
-                
-                appleTree.appendChild(apple);
-            }
-            
-            gameScene.appendChild(appleTree);
-            
-            // Add to apple trees array
-            appleTrees.push({
-                id: id,
-                element: appleTree,
-                x: x,
-                y: y,
-                apples: apples,
-                lastGrowTime: Date.now(),
-                growInterval: 15000 + Math.random() * 15000 // Grow new apples every 15-30 seconds
-            });
-            
-            // Track apple tree creation in global context
-            trackEvent('apple_tree_created', {
-                id: id,
-                position: { x, y }
-            });
-            
-            console.log(`Apple tree #${id} created at (${x}, ${y}) with ${appleCount} apples`);
-            
-            // Show notification if there are Thronglets
-            if (thronglets.length > 0 && isLlmEnabled) {
-                const randomIndex = Math.floor(Math.random() * thronglets.length);
-                const randomThronglet = thronglets[randomIndex];
-                
-                const prompt = `You are Thronglet #${randomThronglet.id}. Your hunger level is ${randomThronglet.hunger}% and happiness level is ${randomThronglet.happiness}%. 
-                A new apple tree has appeared in the game area. The tree will drop apples periodically that you can eat. How do you react?`;
-                
-                queueLlmRequest(prompt, randomThronglet);
-            }
-            
-            return appleTree;
-        }
-        
-        // Function to handle apple tree life cycle
-        function updateAppleTrees() {
-            const currentTime = Date.now();
-            
-            // Check each apple tree
-            for (let i = 0; i < appleTrees.length; i++) {
-                const tree = appleTrees[i];
-                
-                // Check if we should grow new apples
-                if (currentTime - tree.lastGrowTime > tree.growInterval && tree.apples.length < 5) {
-                    growNewAppleOnTree(tree);
-                    tree.lastGrowTime = currentTime;
-                }
-                
-                // Check each apple to see if it should drop
-                for (let j = 0; j < tree.apples.length; j++) {
-                    const apple = tree.apples[j];
-                    
-                    if (currentTime > apple.dropTime) {
-                        // Drop the apple
-                        dropAppleFromTree(tree, apple, j);
-                        j--; // Adjust index since we removed an apple
-                    }
-                }
-            }
-            
-            // Check falling apples
-            for (let i = 0; i < fallingApples.length; i++) {
-                const apple = fallingApples[i];
-                
-                if (currentTime > apple.landTime) {
-                    // Apple has landed
-                    landApple(apple, i);
-                    i--; // Adjust index since we removed an apple
-                }
-            }
-        }
-        
-        // Function to grow a new apple on a tree
-        function growNewAppleOnTree(tree) {
-            const apple = document.createElement('div');
-            apple.className = 'tree-apple';
-            
-            // Position apple randomly in the tree crown
-            const angle = Math.random() * Math.PI * 2;
-            const distance = 5 + Math.random() * 15;
-            const appleX = 25 + Math.cos(angle) * distance;
-            const appleY = 15 + Math.sin(angle) * distance;
-            
-            apple.style.left = appleX + 'px';
-            apple.style.top = appleY + 'px';
-            
-            // Store apple data
-            const appleData = {
-                element: apple,
-                x: appleX,
-                y: appleY,
-                dropTime: Date.now() + 10000 + Math.random() * 20000 // Drop between 10-30 seconds
-            };
-            
-            tree.apples.push(appleData);
-            tree.element.appendChild(apple);
-            
-            console.log(`New apple grew on tree #${tree.id}`);
-        }
-        
-        // Function to drop an apple from a tree
-        function dropAppleFromTree(tree, apple, appleIndex) {
-            // Remove apple from tree data
-            tree.apples.splice(appleIndex, 1);
-            
-            // Create a falling apple
-            const fallingApple = document.createElement('div');
-            fallingApple.className = 'falling-apple';
-            
-            // Position at the same spot as the tree apple
-            const absoluteX = parseInt(tree.element.style.left) + apple.x;
-            const absoluteY = parseInt(tree.element.style.top) + apple.y;
-            
-            fallingApple.style.left = absoluteX + 'px';
-            fallingApple.style.top = absoluteY + 'px';
-            
-            // Remove the original apple
-            tree.element.removeChild(apple.element);
-            
-            // Add falling apple to game scene
-            gameScene.appendChild(fallingApple);
-            
-            // Add to falling apples array
-            fallingApples.push({
-                element: fallingApple,
-                x: absoluteX,
-                y: absoluteY,
-                landTime: Date.now() + 1000, // Land after 1 second
-                treeId: tree.id
-            });
-            
-            console.log(`Apple dropped from tree #${tree.id}`);
-        }
-        
-        // Function to handle an apple landing
-        function landApple(apple, index) {
-            // Remove from falling apples array
-            fallingApples.splice(index, 1);
-            
-            // Remove the falling apple element
-            gameScene.removeChild(apple.element);
-            
-            // Create a regular apple at the landing spot
-            const adjustedY = apple.y + 40; // Adjust for the falling animation
-            createApple(apple.x, adjustedY);
-            
-            // Small chance (10%) to grow a new apple tree if there aren't too many
-            if (Math.random() < 0.1 && appleTrees.length < maxAppleTrees) {
-                // Add a small delay before the tree appears
-                setTimeout(() => {
-                    // Check if the apple still exists (wasn't eaten)
-                    const appleExists = apples.some(a => 
-                        Math.abs(a.x - apple.x) < 5 && Math.abs(a.y - adjustedY) < 5
-                    );
-                    
-                    if (appleExists) {
-                        // Remove the apple
-                        for (let i = 0; i < apples.length; i++) {
-                            const a = apples[i];
-                            if (Math.abs(a.x - apple.x) < 5 && Math.abs(a.y - adjustedY) < 5) {
-                                gameScene.removeChild(a.element);
-                                apples.splice(i, 1);
-                                break;
-                            }
-                        }
-                        
-                        // Grow a new apple tree
-                        createAppleTree(apple.x, adjustedY);
-                    }
-                }, 5000 + Math.random() * 5000); // Grow after 5-10 seconds
-            }
-            
-            console.log(`Apple landed at (${apple.x}, ${adjustedY})`);
-        }
+        // ... existing code ...
 
         // Add button to place an apple tree in the item buttons section
         const placeAppleTree = document.createElement('button');
@@ -3699,7 +3146,7 @@
                 this.id = thronglet.id;
                 
                 // Learning parameters
-                this.learningRate = learningRate;
+                this.learningRate = agentLearningRate;
                 this.discountFactor = discountFactor;
                 this.explorationRate = explorationRate;
                 
@@ -4648,7 +4095,7 @@
             
             // Show global stats
             stats += `Observation Phase: ${observationPhase ? "Active" : "Completed"}\n`;
-            stats += `Learning Rate: ${learningRate.toFixed(3)}\n`;
+            stats += `Learning Rate: ${agentLearningRate.toFixed(3)}\n`;
             stats += `Exploration Rate: ${explorationRate.toFixed(3)}\n\n`;
             
             // Show stats for each Thronglet
@@ -4785,7 +4232,7 @@
             
             // Add an option for each Thronglet
             thronglets.forEach(thronglet => {
-                if (thronglet.agent) { // Only include Thronglets with agents
+                if (thronglet.agent && !thronglet.isCrushed) { // Only include Thronglets with agents and not crushed
                     const option = document.createElement('option');
                     option.value = thronglet.id;
                     option.textContent = `Thronglet #${thronglet.id}`;
@@ -4814,7 +4261,25 @@
         function initBrainVisualization(throngletId) {
             // Find the Thronglet
             const thronglet = thronglets.find(t => t.id === throngletId);
-            if (!thronglet || !thronglet.agent) return;
+            if (!thronglet || !thronglet.agent || thronglet.isCrushed) {
+                // Clear visualization if Thronglet is crushed or invalid
+                clearCanvas();
+                stopVisualizerUpdates();
+                
+                // Show message if Thronglet was crushed
+                if (thronglet && thronglet.isCrushed) {
+                    const canvas = document.getElementById('brain-canvas');
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = 'rgba(255, 69, 0, 0.8)'; // Red-orange color
+                    ctx.font = '20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`Thronglet #${throngletId} was crushed. Neural network lost.`, canvas.width / 2, canvas.height / 2);
+                    
+                    // Update the neuron info
+                    document.getElementById('neuron-info').textContent = 'This Thronglet was crushed and its neural network was lost.';
+                }
+                return;
+            }
             
             const agent = thronglet.agent;
             
@@ -5049,7 +4514,11 @@
             
             // Find the current Thronglet
             const thronglet = thronglets.find(t => t.id === activeBrainVisualization.throngletId);
-            if (!thronglet || !thronglet.agent) return;
+            if (!thronglet || !thronglet.agent || thronglet.isCrushed) {
+                // If Thronglet was crushed during visualization, reinitialize to show crushed message
+                initBrainVisualization(activeBrainVisualization.throngletId);
+                return;
+            }
             
             const agent = thronglet.agent;
             
@@ -5155,6 +4624,52 @@
                     });
                 }
             }
+
+            // Add rock danger learning visualization
+            if (!activeBrainVisualization.neurons['rock_danger_learning']) {
+                // Calculate rock danger learning progress based on encounters and neural weights
+                let rockDangerValue = 0;
+                if (thronglet.agent && thronglet.agent.weights) {
+                    rockDangerValue = Math.min(1.0, (thronglet.agent.weights.rock_danger || 0));
+                }
+                
+                // Create rock danger learning neuron
+                activeBrainVisualization.neurons['rock_danger_learning'] = {
+                    x: width - 200, // Position it to the left of outputs
+                    y: 200, // Below play learning
+                    value: rockDangerValue,
+                    type: 'learning',
+                    connections: []
+                };
+
+                // Add input neuron for rock danger if it doesn't exist
+                if (!activeBrainVisualization.neurons['rock_danger']) {
+                    activeBrainVisualization.neurons['rock_danger'] = {
+                        x: 80, // With other input neurons
+                        y: height - 50, // At the bottom of input layer
+                        value: rockDangerValue,
+                        type: 'input',
+                        connections: []
+                    };
+                }
+
+                // Connect rock danger input to learning neuron
+                activeBrainVisualization.neurons['rock_danger'].connections.push({
+                    target: 'rock_danger_learning',
+                    weight: 0.8 // Strong connection for rock danger learning
+                });
+
+                // Connect rock danger learning to movement outputs
+                const movementOutputs = ['moveRandom', 'moveToApple', 'moveToBall', 'moveToThronglet'];
+                movementOutputs.forEach(output => {
+                    if (activeBrainVisualization.neurons[output]) {
+                        activeBrainVisualization.neurons['rock_danger_learning'].connections.push({
+                            target: output,
+                            weight: -rockDangerValue * 0.6 // Negative weight to discourage movement when danger is high
+                        });
+                    }
+                });
+            }
             
             // Update values for learning neurons
             if (activeBrainVisualization.neurons['food_learning']) {
@@ -5167,6 +4682,19 @@
                 const kickedMemories = (globalContext.throngletMemory[thronglet.id] || [])
                     .filter(m => m.type === 'ball_kicked');
                 activeBrainVisualization.neurons['play_learning'].value = Math.min(1.0, kickedMemories.length / 3);
+            }
+
+            // Update rock danger learning value
+            if (activeBrainVisualization.neurons['rock_danger_learning']) {
+                let rockDangerValue = 0;
+                if (thronglet.agent && thronglet.agent.weights && thronglet.agent.weights.rock_danger) {
+                    // Base value on the weight learned by the agent
+                    rockDangerValue = Math.min(1.0, (thronglet.agent.weights.rock_danger));
+                } else if (thronglet.agent && thronglet.agent.currentState && thronglet.agent.currentState.rock_danger) {
+                    // Fallback to current state if weight not available
+                    rockDangerValue = Math.min(1.0, thronglet.agent.currentState.rock_danger);
+                }
+                activeBrainVisualization.neurons['rock_danger_learning'].value = rockDangerValue;
             }
             
             // Update last action
@@ -5587,7 +5115,16 @@
                     );
                     
                     // Show learning type name
-                    let displayName = neuronName === 'food_learning' ? 'Food Learning' : 'Play Learning';
+                    let displayName;
+                    if (neuronName === 'food_learning') {
+                        displayName = 'Food Learning';
+                    } else if (neuronName === 'play_learning') {
+                        displayName = 'Play Learning';
+                    } else if (neuronName === 'rock_danger_learning') {
+                        displayName = 'Rock Danger Learning';
+                    } else {
+                        displayName = neuronName; // Fallback to the key name
+                    }
                     ctx.fillText(displayName, neuron.x - 20, neuron.y);
                     
                     // Show progress percentage inside
@@ -5691,6 +5228,11 @@
                                 info += `Last Kicked: ${lastTime.toLocaleTimeString()}<br>`;
                             }
                         }
+                    } else if (neuronName === 'rock_danger_learning') {
+                        // Show rock danger learning progress
+                        const rockDangerValue = clickedNeuron.value;
+                        info += `Learning Progress: ${Math.round(rockDangerValue * 100)}%<br>`;
+                        info += `Rock Danger Perceived: ${rockDangerValue.toFixed(2)}<br>`;
                     }
                 }
                 
@@ -5824,65 +5366,45 @@
         
         // Function to extract morse patterns from text
         function extractMorsePatterns(text) {
-            const patterns = [];
-            
-            // Check if text is defined
-            if (!text) {
-                console.warn("extractMorsePatterns called with undefined or empty text");
-                return patterns;
+            // Use the language system's implementation if available
+            if (window.ThrongletLanguage && typeof window.ThrongletLanguage.extractMorsePatterns === 'function') {
+                return window.ThrongletLanguage.extractMorsePatterns(text);
             }
             
+            // Fallback implementation
+            if (!text || typeof text !== 'string') {
+                console.warn("extractMorsePatterns called with undefined or empty text");
+                return [];
+            }
+            
+            try {
             // Look for patterns that might be Morse code
-            if (text.includes(".") || text.includes("-")) {
-                // Identify word boundaries in potential Morse segments
                 const words = text.split(/\s+/);
-                
-                for (const word of words) {
+                const morseWords = words.filter(word => {
                     // Check if the word looks like Morse code (only dots, dashes, and spaces)
-                    if (/^[-.\s]+$/.test(word) && word.length >= 2) {
-                        patterns.push(word.trim());
-                    }
+                    return /^[.\- ]+$/.test(word) && 
+                          (word.includes('.') || word.includes('-')); // Must have at least one . or -
+                });
+                
+                if (morseWords.length > 0) {
+                    return morseWords;
                 }
                 
-                // If no individual words were found, try to find sequences in the whole text
-                if (patterns.length === 0) {
+                // If no obvious Morse words found, try a more general pattern search
                     const morseRegex = /[-.\s]{2,}/g;
                     const matches = text.match(morseRegex);
                     
                     if (matches) {
-                        matches.forEach(match => {
-                            if (/^[-.\s]+$/.test(match)) {
-                                patterns.push(match.trim());
-                            }
-                        });
-                    }
+                    return matches.filter(pattern => {
+                        // Filter out patterns that don't have at least one dot or dash
+                        return (pattern.includes('.') || pattern.includes('-'));
+                    });
                 }
+            } catch (error) {
+                console.error("Error extracting Morse patterns:", error);
             }
             
-            // Also look for exact matches to concept patterns in the language system
-            // Make sure throngletLanguage and concepts exist before trying to access them
-            if (throngletLanguage && throngletLanguage.concepts) {
-                // Check if concepts is a Map (class-based version) or a regular object (original version)
-                if (throngletLanguage.concepts instanceof Map) {
-                    // If it's a Map, iterate using keys()
-                    for (const [pattern, concept] of throngletLanguage.concepts.entries()) {
-                        if (text.includes(pattern) && !patterns.includes(pattern)) {
-                            patterns.push(pattern);
-                        }
-                    }
-                } else {
-                    // If it's a regular object, use Object.values
-                    for (const pattern of Object.values(throngletLanguage.concepts)) {
-                        if (text.includes(pattern) && !patterns.includes(pattern)) {
-                            patterns.push(pattern);
-                        }
-                    }
-                }
-            } else {
-                console.warn("throngletLanguage.concepts is not defined when extracting Morse patterns");
-            }
-            
-            return patterns;
+            return [];
         }
         
         // Play a sequence of morse code
@@ -5957,6 +5479,12 @@
         
         // Basic Morse code translation
         function textToMorse(text) {
+            // Use language system implementation if available
+            if (window.ThrongletLanguage && typeof window.ThrongletLanguage.textToMorse === 'function') {
+                return window.ThrongletLanguage.textToMorse(text);
+            }
+            
+            // Fallback implementation
             const morseMap = {
                 'a': '.-', 'b': '-...', 'c': '-.-.', 'd': '-..', 'e': '.', 
                 'f': '..-.', 'g': '--.', 'h': '....', 'i': '..', 'j': '.---',
@@ -5982,6 +5510,12 @@
         }
         
         function morseToText(morse) {
+            // Use language system implementation if available
+            if (window.ThrongletLanguage && typeof window.ThrongletLanguage.morseToText === 'function') {
+                return window.ThrongletLanguage.morseToText(morse);
+            }
+            
+            // Fallback implementation
             const textMap = {
                 '.-': 'a', '-...': 'b', '-.-.': 'c', '-..': 'd', '.': 'e', 
                 '..-.': 'f', '--.': 'g', '....': 'h', '..': 'i', '.---': 'j',
@@ -7130,6 +6664,220 @@
                 console.error("Error in showLearningPath:", error);
             }
         }
+
+        // Function to update game area dimensions on window resize
+        function updateGameArea() {
+            // Get window dimensions
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            // Adjust game scene size if needed while maintaining aspect ratio
+            // This is just a basic implementation - you may want to enhance it
+            const gameContainer = document.getElementById('game-container');
+            if (gameContainer) {
+                // Apply any responsive adjustments here if needed
+                console.log("Game area updated for window size:", windowWidth, "x", windowHeight);
+            }
+        }
+
+        // Initialize the game once the DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup game elements
+            egg = document.getElementById('egg');
+            message = document.getElementById('message');
+            commandCenter = document.getElementById('command-center');
+            itemButtons = document.getElementById('item-buttons');
+            gameScene = document.getElementById('game-scene');
+            throngletCounter = document.getElementById('thronglet-counter');
+            
+            // Setup mobile warning dismiss handler
+            const continueAnywayButton = document.getElementById('continue-anyway');
+            const mobileWarning = document.getElementById('mobile-warning');
+            
+            // Add event listener to dismiss mobile warning
+            if (continueAnywayButton && mobileWarning) {
+                continueAnywayButton.addEventListener('click', function() {
+                    mobileWarning.style.display = 'none';
+                    console.log("Mobile warning dismissed by user");
+                });
+            }
+            
+            // Fix the mobile warning display (CSS has display:none and display:flex)
+            if (mobileWarning) {
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                mobileWarning.style.display = isMobile ? 'flex' : 'none';
+            }
+            
+            // Setup audio context
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.warn("Web Audio API not supported in this browser");
+            }
+            
+            // Setup egg click handler
+            egg.addEventListener('click', handleEggClick);
+            
+            // Initialize LLM integration
+            setupLlmIntegration();
+            
+            // Initialize language learning system
+            if (window.ThrongletLanguage) {
+                console.log("Language learning system available, will initialize on first use");
+                
+                // Preload language model after a short delay to not block initial loading
+                setTimeout(() => {
+                    if (window.ThrongletLanguage.isEnabled()) {
+                        window.ThrongletLanguage.initialize();
+                    }
+                }, 3000);
+            } else {
+                console.warn("Language learning system not available");
+            }
+            
+            // Initialize agent learning system if enabled
+            if (agentLearningEnabled) {
+                setupAgentLearningSystem();
+            }
+            
+            // Listen for resize events to adjust game area
+            window.addEventListener('resize', updateGameArea);
+            updateGameArea();
+            
+            console.log("Game initialized, click the egg to start!");
+        });
+
+        function updateAppleTrees() {
+            // For each apple tree, randomly decide if it should drop an apple
+            appleTrees.forEach(tree => {
+                // Only drop apples if tree is mature (has existed for at least 10 seconds)
+                if (Date.now() - tree.planted > 10000) {
+                    // Random chance to drop an apple
+                    if (Math.random() < appleDropProbability) {
+                        // Calculate a position near the tree to drop the apple
+                        const offsetX = Math.random() * 40 - 20; // -20 to +20 offset
+                        const offsetY = Math.random() * 40 - 20; // -20 to +20 offset
+                        
+                        // Create apple at this position
+                        createApple(tree.x + offsetX, tree.y + offsetY);
+                    }
+                }
+            });
+        }
+        
+        function createAppleTree(x, y) {
+            const tree = document.createElement('div');
+            tree.className = 'apple-tree';
+            tree.style.left = x + 'px';
+            tree.style.top = y + 'px';
+            gameScene.appendChild(tree);
+            
+            // Add to apple trees array
+            appleTrees.push({
+                element: tree,
+                x: x,
+                y: y,
+                planted: Date.now(), // Track when tree was planted
+                lastAppleDrop: Date.now() // Track when last apple was dropped
+            });
+            
+            // Track tree placement in global context
+            if (typeof trackEvent === 'function') {
+                trackEvent('apple_tree_placed', {
+                    position: { x, y },
+                    totalTrees: appleTrees.length
+                });
+            }
+            
+            return tree;
+        }
+
+        // Handle conversations between Thronglets using language learning system
+        function queueLlmConversationRequest(prompt, thronglet, otherThronglet, conversationKey) {
+            if (!thronglet || !otherThronglet) {
+                console.error("Invalid thronglets for conversation");
+                return;
+            }
+            
+            // Flag that a thronglet conversation is happening (prevents additional ones)
+            isThrongletChatting = true;
+            
+            // First check if language system is available
+            if (window.ThrongletLanguage && window.ThrongletLanguage.isEnabled()) {
+                // Process using language system
+                window.ThrongletLanguage.processInput(prompt, thronglet).then(response => {
+                    // Show the speaking thronglet's response
+                    thronglet.showThought(response);
+                    
+                    // Record in conversation history
+                    if (conversationKey && ongoingConversations[conversationKey]) {
+                        ongoingConversations[conversationKey].push({
+                            throngletId: thronglet.id,
+                            message: response,
+                            timestamp: Date.now()
+                        });
+                    }
+                    
+                    // After a delay, have the other thronglet respond
+                    setTimeout(() => {
+                        // Create a response prompt for the other thronglet
+                        const responsePrompt = `You are Thronglet #${otherThronglet.id}. 
+                        Your hunger is ${otherThronglet.hunger}% and happiness is ${otherThronglet.happiness}%.
+                        Thronglet #${thronglet.id} just said to you: "${response}"
+                        
+                        Generate a short (maximum 15 words) response.`;
+                        
+                        // Process the other thronglet's response
+                        window.ThrongletLanguage.processInput(responsePrompt, otherThronglet).then(otherResponse => {
+                            // Show the response
+                            otherThronglet.showThought(otherResponse);
+                            
+                            // Record in conversation history
+                            if (conversationKey && ongoingConversations[conversationKey]) {
+                                ongoingConversations[conversationKey].push({
+                                    throngletId: otherThronglet.id,
+                                    message: otherResponse,
+                                    timestamp: Date.now()
+                                });
+                            }
+                            
+                            // End the conversation
+                            setTimeout(() => {
+                                isThrongletChatting = false;
+                            }, 3000);
+                        });
+                    }, 3000); // Wait 3 seconds before responding
+                });
+            } else {
+                // Fallback behavior when language system is not available
+                console.log("Language system unavailable, using fallback for conversation");
+                
+                // Just show simple responses
+                thronglet.showThought("Hello friend!");
+                
+                setTimeout(() => {
+                    otherThronglet.showThought("Hi there!");
+                    
+                    // End the conversation after a delay
+                    setTimeout(() => {
+                        isThrongletChatting = false;
+                    }, 2000);
+                }, 2000);
+            }
+        }
+    </script>
+    <script>
+        // Start background music when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const backgroundMusic = document.getElementById('background-music');
+            backgroundMusic.volume = 0.3; // Set volume to 30%
+            
+            // Play music on first user interaction (to comply with autoplay policies)
+            document.addEventListener('click', function startMusic() {
+                backgroundMusic.play().catch(err => console.log('Failed to play music:', err));
+                document.removeEventListener('click', startMusic);
+            }, { once: true });
+        });
     </script>
 </body>
 </html>
